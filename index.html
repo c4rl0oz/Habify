@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Habify v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
+<div id="pantalla-auth" class="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col justify-center px-8 gap-6">
+        <div class="space-y-1">
+        <h1 class="text-4xl font-black text-black">Habify</h1>
+        <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
+    </div>
+
+    <div class="space-y-3">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tu nombre</label>
+            <input type="text" id="auth-nombre" placeholder="Ej. Carlos, Ana..." 
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#333538] focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="auth-password" placeholder="Mínimo 4 caracteres"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#333538] focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+        <p id="auth-error" class="text-xs text-rose-500 font-medium hidden">Por favor completa todos los campos.</p>
+    </div>
+
+    <button onclick="registrarUsuario()" class="w-full bg-[#333538] text-white font-bold text-sm py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all">
+        Comenzar →
+    </button>
+
+    <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan solo en este dispositivo</p>
+</div>
+
+<!-- PANTALLA DE PERFIL -->
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-black z-40 flex flex-col px-6 pt-12 pb-8 hidden">
+        <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-black text-black">Mi Perfil</h2>
+        <button onclick="cerrarPerfil()" class="bg-slate-100 p-2.5 rounded-full active:scale-90 transition-transform">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+    </div>
+
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100">
+        <div class="w-20 h-20 rounded-full bg-[#333538] flex items-center justify-center">
+            <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+        </div>
+        <div class="text-center">
+            <p id="perfil-nombre" class="text-xl font-black text-black">Usuario</p>
+            <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
+        </div>
+    </div>
+
+    <div class="mt-6 space-y-3">
+        <div class="bg-slate-100 dark:bg-[#111111] p-4 rounded-2xl flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-600">Hábitos creados</span>
+        <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#111111] p-4 rounded-2xl flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-600">Días usando Habify</span>
+            <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#111111]  p-4 rounded-2xl flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-600">Racha máxima</span>
+            <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
+        </div>
+    </div>
+
+    <div class="mt-auto">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all">
+            Cerrar sesión
+        </button>
+    </div>
+</div>
+<header class="bg-white dark:bg-black px-6 pt-8 pb-4 flex justify-between items-center shrink-0">
+            <div>
+            <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black">Buenos Días!</h1>
+        </div>
+        
+        <div class="flex items-center gap-3">
+<button onclick="toggleModoOscuro()" class="bg-slate-100 dark:bg-white p-2.5 rounded-full text-black dark:text-black hover:bg-slate-200 active:scale-95 transition-all">
+                        <i data-lucide="sliders-horizontal" class="w-5 h-5 stroke-[2.5]"></i>
+            </button>
+
+            <button onclick="abrirPerfil()" class="w-10 h-10 rounded-full bg-[#333538] flex items-center justify-center border border-slate-200 active:scale-90 transition-transform">
+                <span id="header-inicial" class="text-sm font-black text-white">?</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
+        
+        <section id="pantalla-inicio" class="space-y-4">
+            <div id="contenedor-widgets" class="grid grid-cols-2 gap-4"></div>
+
+        </section>
+
+        <section id="pantalla-calendario" class="hidden space-y-5">
+            <div class="flex justify-between items-center py-2">
+                <button onclick="cambiarMes(-1)" class="bg-slate-100 p-2.5 rounded-full text-black active:scale-90 transition-transform">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <h2 id="calendario-mes-titulo" class="text-xl font-bold text-black">Junio 2026</h2>
+                <button onclick="cambiarMes(1)" class="bg-slate-100 p-2.5 rounded-full text-black active:scale-90 transition-transform">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-7 text-center text-xs font-bold text-slate-400">
+                <span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span>
+            </div>
+
+            <div id="cuadrilla-mensual" class="grid grid-cols-7 gap-2 text-center"></div>
+            
+            <div id="vista-rapida-dia" class="bg-slate-100 p-4 rounded-3xl border border-slate-200/50 space-y-2 hidden">
+                <h3 id="resumen-dia-titulo" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Hábitos del día</h3>
+                <div id="lista-habitos-cumplidos" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+        </section>
+
+        <!-- PANTALLA DE ESTADÍSTICAS -->
+<section id="pantalla-estadisticas" class="hidden space-y-5">
+    
+    <div class="flex justify-between items-center py-2">
+        <h2 class="text-2xl font-black text-black">Estadísticas</h2>
+        <span id="stats-fecha" class="text-xs font-bold text-slate-400"></span>
+    </div>
+
+    <!-- Tarjeta de productividad global -->
+    <div class="bg-[#333538] p-5 rounded-[28px] flex justify-between items-center">
+        <div>
+            <p class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
+            <p id="stats-porcentaje" class="text-4xl font-black text-white">0%</p>
+            <p id="stats-descripcion" class="text-xs text-white/60 mt-1">hábitos completados</p>
+        </div>
+        <div class="relative w-16 h-16 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-white/20" stroke-width="3" stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path id="stats-anillo" class="text-white transition-all duration-700" 
+                      stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" 
+                      stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Gráfica semanal con Chart.js -->
+    <div class="bg-slate-100/70 p-5 rounded-[28px] space-y-3">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
+        <canvas id="grafica-semanal" height="160"></canvas>
+    </div>
+
+    <div class="bg-slate-100/70 p-5 rounded-[28px] space-y-3">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
+        <canvas id="grafica-mensual" height="160"></canvas>
+    </div>
+
+    <!-- Rachas por hábito -->
+    <div class="space-y-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Rachas activas</p>
+        <div id="lista-rachas" class="space-y-2"></div>
+    </div>
+
+</section>
+
+    </main>
+<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-black/90 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm flex justify-between items-center">        
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hoy</p>
+        <p id="texto-resumen-hoy" class="text-sm font-bold text-black dark:text-white">Cargando...</p>
+    </div>
+    <div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
+<nav class="bg-slate-200/95 dark:bg-white/10 backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-300/30 dark:border-white/10">
+                <div class="flex w-2/5 justify-around">
+                <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                    <i data-lucide="layout-grid" class="w-6 h-6 stroke-[2]"></i>
+                </button>
+                
+                <button onclick="irAPantalla('calendario')"class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                    <i data-lucide="calendar-days" class="w-6 h-6 stroke-[2]"></i>
+                </button>
+            </div>
+
+            <div class="w-1/5 flex justify-center">
+                <button onclick="abrirModal()" class="bg-[#333538] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                     <i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>
+            </button>
+            </div>
+
+            <div class="flex w-2/5 justify-around">
+                <button onclick="irAPantalla('estadisticas')" class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                    <i data-lucide="bar-chart-2" class="w-6 h-6 stroke-[2]"></i>
+                </button>
+                
+                <button class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                    <i data-lucide="message-square" class="w-6 h-6 stroke-[2]"></i>
+                </button>
+            </div>
+
+        </nav>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+<div id="modal-container" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30 flex items-end justify-center transition-opacity duration-300">
+        
+        <div class="bg-white w-full rounded-t-[32px] p-6 pb-10 space-y-5 shadow-2xl transform translate-y-0 transition-transform duration-300 max-w-md">
+            
+            <div class="flex justify-center">
+                <div onclick="cerrarModal()" class="w-12 h-1.5 bg-slate-200 rounded-full cursor-pointer hover:bg-slate-300"></div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-bold text-black">Nuevo Hábito</h3>
+                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-slate-100 rounded-full">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form id="form-nuevo-habito" onsubmit="event.preventDefault();" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">¿Qué hábito quieres crear?</label>
+                    <input type="text" id="habito-nombre" placeholder="Ej. Meditar, Leer, Estudiar..." required
+                        class="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:bg-white focus:border-black font-semibold text-black transition-all">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Emoji Icono</label>
+                        <button type="button" onclick="abrirSelectorEmoji()" 
+                                class="w-full px-4 py-3 bg-slate-100 rounded-2xl flex items-center gap-3 active:scale-[0.98] transition-all">
+                            <span id="emoji-seleccionado" class="text-2xl">🏃</span>
+                            <span class="text-sm font-semibold text-slate-500">Toca para elegir</span>
+                            <span class="ml-auto text-slate-400 text-xs">›</span>
+                        </button>
+                        <input type="hidden" id="habito-emoji" value="🏃">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Meta Semanal</label>
+                        <select id="habito-meta" class="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:bg-white focus:border-black font-semibold text-black appearance-none cursor-pointer">
+                            <option value="1">1 día / sem</option>
+                            <option value="3">3 días / sem</option>
+                            <option value="4">4 días / sem</option>
+                            <option value="5">5 días / sem</option>
+                            <option value="7">Todos los días</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-[#333538] text-white font-bold text-sm py-3.5 rounded-2xl shadow-lg active:scale-[0.98] transition-all mt-2">
+                    Crear Meta
+                </button>
+            </form>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <!-- SELECTOR DE EMOJI -->
+    <div id="selector-emoji" class="hidden fixed inset-0 z-50 flex items-end justify-center">
+        <div onclick="cerrarSelectorEmoji()" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white w-full max-w-md rounded-t-[32px] p-6 pb-10 shadow-2xl">
+            <div class="flex justify-center mb-4">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+            </div>
+            <h3 class="text-base font-bold text-black mb-4">Elige un emoji</h3>
+            <div id="grid-emojis-panel" class="grid grid-cols-7 gap-2 max-h-64 overflow-y-auto">
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
