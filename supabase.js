@@ -60,7 +60,7 @@ async function obtenerHabitosSupabase(usuarioId) {
     return await res.json();
 }
 
-async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion) {
+async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF') {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
@@ -69,7 +69,8 @@ async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaC
             nombre,
             emoji,
             meta_semanal: metaSemanal,
-            fecha_creacion: fechaCreacion
+            fecha_creacion: fechaCreacion,
+            color
         })
     });
     const data = await res.json();

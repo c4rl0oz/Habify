@@ -4,6 +4,7 @@ let usuarioActual = null;
 let fechaActualCalendario = new Date();
 let graficaSemanal = null;
 let graficaMensual = null;
+let diaSeleccionadoTira = hoyComoTexto();
 
 function hoyComoTexto() {
     const hoy = new Date();
@@ -232,13 +233,13 @@ async function cargarDatosUsuario() {
         id: h.id,
         nombre: h.nombre,
         emoji: h.emoji,
+        color: h.color || '#6C63FF',   // ← agrega esta línea
         metaSemanal: h.meta_semanal,
         fechaCreacion: h.fecha_creacion,
         registros: registrosDB
             .filter(r => r.habito_id === h.id)
             .map(r => r.fecha)
     }));
-
     renderizarHabitos();
     actualizarResumenHoy();
     inicializarTiraDias();
@@ -456,15 +457,44 @@ async function eliminarHabito(id) {
 // MODAL DE CREAR HÁBITO
 // ============================================================
 function abrirModal() {
-    document.getElementById('modal-container').classList.remove('hidden');
+    const pantalla = document.getElementById('pantalla-crear-habito');
+    pantalla.classList.remove('hidden');
+    // Reset estado
+    document.getElementById('habito-nombre').value = '';
+    document.getElementById('contador-caracteres').innerText = '0/30';
+    document.getElementById('habito-emoji').value = '🏃';
+    document.getElementById('emoji-preview').innerText = '🏃';
+    document.getElementById('emoji-nombre-preview').innerText = 'Correr';
+    document.getElementById('habito-color').value = '#6C63FF';
+    document.getElementById('btn-crear-habito').style.background = '#6C63FF';
+    document.getElementById('habito-meta').value = '1';
+    document.getElementById('meta-descripcion').innerText = 'Selecciona cuántos días por semana';
+    // Reset botones meta
+    document.querySelectorAll('.meta-btn').forEach(b => {
+        b.style.background = '';
+        b.style.color = '';
+        b.classList.add('bg-slate-100', 'text-slate-500');
+    });
+    // Reset botones color
+    document.querySelectorAll('.color-btn').forEach(b => {
+        b.classList.remove('ring-2', 'ring-offset-2');
+        const color = b.dataset.color;
+        b.style.ring = '';
+    });
+    const primerColor = document.querySelector('.color-btn');
+    if (primerColor) {
+        primerColor.classList.add('ring-2', 'ring-offset-2');
+        primerColor.style.outline = '2px solid #6C63FF';
+        primerColor.style.outlineOffset = '2px';
+    }
+    // Cargar primera categoría
+    mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
+    lucide.createIcons();
 }
 
 function cerrarModal() {
-    document.getElementById('modal-container').classList.add('hidden');
+    document.getElementById('pantalla-crear-habito').classList.add('hidden');
 }
-
-document.getElementById('form-nuevo-habito').addEventListener('submit', async function(event) {
-    event.preventDefault();
 
     const nombreInput = document.getElementById('habito-nombre').value.trim();
     const emojiInput = document.getElementById('habito-emoji').value;
@@ -1092,9 +1122,8 @@ async function guardarNotaDia() {
 // TIRA DE DÍAS HORIZONTAL
 // ============================================================
 
-let diaSeleccionadoTira = hoyComoTexto();
-
 function inicializarTiraDias() {
+    if (!diaSeleccionadoTira) diaSeleccionadoTira = hoyComoTexto();
     const contenedor = document.getElementById('tira-dias');
     const fechaHoyEl = document.getElementById('fecha-hoy');
     if (!contenedor) return;
@@ -1183,6 +1212,182 @@ function mostrarResumenDiaTira(fechaStr) {
         }
     }
 }
+
+// ============================================================
+// CREAR HÁBITO — NUEVA PANTALLA
+// ============================================================
+
+let colorSeleccionado = '#6C63FF';
+let metaSeleccionada = 1;
+
+function actualizarContador(input) {
+    document.getElementById('contador-caracteres').innerText = `${input.value.length}/30`;
+}
+
+function seleccionarColor(color, btn) {
+    colorSeleccionado = color;
+    document.getElementById('habito-color').value = color;
+    document.getElementById('btn-crear-habito').style.background = color;
+
+    document.querySelectorAll('.color-btn').forEach(b => {
+        b.style.outline = 'none';
+    });
+    btn.style.outline = `2px solid ${color}`;
+    btn.style.outlineOffset = '3px';
+}
+
+function seleccionarMeta(dias, btn) {
+    metaSeleccionada = dias;
+    document.getElementById('habito-meta').value = dias;
+
+    const descripciones = {
+        1: '1 día a la semana — para empezar suave',
+        2: '2 días a la semana — ritmo ligero',
+        3: '3 días a la semana — equilibrado',
+        4: '4 días a la semana — constante',
+        5: '5 días a la semana — disciplinado',
+        7: '¡Todos los días! — modo bestia 🔥'
+    };
+    document.getElementById('meta-descripcion').innerText = descripciones[dias];
+
+    const color = document.getElementById('habito-color').value || '#6C63FF';
+    document.querySelectorAll('.meta-btn').forEach(b => {
+        b.style.background = '';
+        b.style.color = '';
+        b.classList.remove('text-white');
+        b.classList.add('bg-slate-100', 'text-slate-500');
+    });
+    btn.style.background = color;
+    btn.style.color = 'white';
+    btn.classList.remove('bg-slate-100', 'text-slate-500');
+}
+
+const CATEGORIAS_EMOJI = {
+    deporte: [
+        { e: '🏃', n: 'Correr' }, { e: '🚴', n: 'Ciclismo' }, { e: '🏋️', n: 'Pesas' },
+        { e: '🧘', n: 'Yoga' }, { e: '🤸', n: 'Gimnasia' }, { e: '⚽', n: 'Fútbol' },
+        { e: '🏊', n: 'Natación' }, { e: '🧗', n: 'Escalada' }, { e: '🎾', n: 'Tenis' },
+        { e: '🏄', n: 'Surf' }, { e: '⛷️', n: 'Esquí' }, { e: '🥊', n: 'Boxeo' },
+    ],
+    salud: [
+        { e: '💧', n: 'Agua' }, { e: '🍏', n: 'Comer sano' }, { e: '🥗', n: 'Ensalada' },
+        { e: '🍎', n: 'Frutas' }, { e: '🥦', n: 'Verduras' }, { e: '😴', n: 'Dormir' },
+        { e: '☀️', n: 'Sol' }, { e: '🪥', n: 'Higiene' }, { e: '💊', n: 'Vitaminas' },
+        { e: '🫁', n: 'Respirar' }, { e: '🩺', n: 'Salud' }, { e: '🧴', n: 'Skincare' },
+    ],
+    mente: [
+        { e: '📚', n: 'Leer' }, { e: '✏️', n: 'Escribir' }, { e: '🎯', n: 'Enfoque' },
+        { e: '🧠', n: 'Aprender' }, { e: '📖', n: 'Estudiar' }, { e: '🎓', n: 'Curso' },
+        { e: '💻', n: 'Programar' }, { e: '📝', n: 'Notas' }, { e: '🔬', n: 'Investigar' },
+        { e: '🙏', n: 'Gratitud' }, { e: '💭', n: 'Reflexión' }, { e: '🧩', n: 'Puzzle' },
+    ],
+    finanzas: [
+        { e: '💰', n: 'Ahorrar' }, { e: '📊', n: 'Finanzas' }, { e: '💼', n: 'Trabajo' },
+        { e: '📈', n: 'Invertir' }, { e: '✅', n: 'Tareas' }, { e: '💳', n: 'Gastos' },
+        { e: '🏦', n: 'Banco' }, { e: '🪙', n: 'Monedas' }, { e: '📉', n: 'Presupuesto' },
+    ],
+    creatividad: [
+        { e: '🎨', n: 'Pintar' }, { e: '🎵', n: 'Música' }, { e: '🎸', n: 'Guitarra' },
+        { e: '🎹', n: 'Piano' }, { e: '✍️', n: 'Diario' }, { e: '📷', n: 'Fotos' },
+        { e: '🎬', n: 'Video' }, { e: '🎭', n: 'Teatro' }, { e: '🖌️', n: 'Ilustrar' },
+        { e: '📻', n: 'Podcast' }, { e: '🪡', n: 'Tejer' }, { e: '🎤', n: 'Cantar' },
+    ],
+    hogar: [
+        { e: '🧹', n: 'Limpiar' }, { e: '🛁', n: 'Baño' }, { e: '🌱', n: 'Plantas' },
+        { e: '🍳', n: 'Cocinar' }, { e: '🧺', n: 'Ropa' }, { e: '🪴', n: 'Jardín' },
+        { e: '🛏️', n: 'Tender cama' }, { e: '🗑️', n: 'Orden' }, { e: '🪟', n: 'Ventilar' },
+    ],
+};
+
+function mostrarCategoriaEmoji(categoria, btnActivo) {
+    const fila = document.getElementById('fila-emojis');
+    const emojis = CATEGORIAS_EMOJI[categoria] || [];
+
+    fila.innerHTML = '';
+    emojis.forEach(({ e, n }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-2xl active:scale-90 transition-all emoji-cat-btn';
+        btn.innerHTML = e;
+        btn.onclick = () => {
+            document.getElementById('habito-emoji').value = e;
+            document.getElementById('emoji-preview').innerText = e;
+            document.getElementById('emoji-nombre-preview').innerText = n;
+            document.querySelectorAll('.emoji-cat-btn').forEach(b => {
+                b.style.background = '';
+                b.classList.add('bg-slate-100');
+            });
+            const color = document.getElementById('habito-color').value || '#6C63FF';
+            btn.style.background = color + '30';
+            btn.style.outline = `2px solid ${color}`;
+            btn.style.outlineOffset = '0px';
+        };
+        fila.appendChild(btn);
+    });
+
+    document.querySelectorAll('.cat-emoji-btn').forEach(b => {
+        b.style.background = '';
+        b.style.color = '';
+        b.classList.remove('text-white');
+        b.classList.add('bg-slate-100', 'dark:bg-white/10', 'text-slate-500');
+    });
+    if (btnActivo) {
+        const color = document.getElementById('habito-color').value || '#6C63FF';
+        btnActivo.style.background = color;
+        btnActivo.style.color = 'white';
+        btnActivo.classList.remove('bg-slate-100', 'text-slate-500');
+    }
+}
+
+async function crearHabitoNuevo() {
+    const nombre = document.getElementById('habito-nombre').value.trim();
+    const emoji = document.getElementById('habito-emoji').value;
+    const color = document.getElementById('habito-color').value;
+    const meta = parseInt(document.getElementById('habito-meta').value);
+
+    if (!nombre) {
+        document.getElementById('habito-nombre').focus();
+        document.getElementById('habito-nombre').classList.add('ring-2', 'ring-red-400');
+        setTimeout(() => document.getElementById('habito-nombre').classList.remove('ring-2', 'ring-red-400'), 1500);
+        return;
+    }
+    if (!meta || meta < 1) {
+        document.getElementById('meta-descripcion').innerText = '⚠️ Elige cuántos días por semana';
+        return;
+    }
+    if (!usuarioActual) return;
+
+    const btn = document.getElementById('btn-crear-habito');
+    btn.innerText = 'Creando...';
+    btn.disabled = true;
+
+    const resultado = await crearHabitoSupabase(
+        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color
+    );
+
+    if (resultado.error) {
+        alert('Error al crear hábito. Intenta de nuevo.');
+        btn.innerText = 'Crear hábito →';
+        btn.disabled = false;
+        return;
+    }
+
+    const nuevoHabito = {
+        id: resultado.habito.id,
+        nombre: resultado.habito.nombre,
+        emoji: resultado.habito.emoji,
+        color: resultado.habito.color || '#6C63FF',
+        metaSemanal: resultado.habito.meta_semanal,
+        fechaCreacion: resultado.habito.fecha_creacion,
+        registros: []
+    };
+
+    misHabitos.push(nuevoHabito);
+    renderizarHabitos();
+    actualizarResumenHoy();
+    cerrarModal();
+}
+
 // ============================================================
 // ARRANCAR
 // ============================================================

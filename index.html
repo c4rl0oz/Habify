@@ -275,70 +275,139 @@
     <script>
         lucide.createIcons();
     </script>
-<div id="modal-container" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30 flex items-end justify-center transition-opacity duration-300">
-        
-        <div class="bg-white w-full rounded-t-[32px] p-6 pb-10 space-y-5 shadow-2xl transform translate-y-0 transition-transform duration-300 max-w-md">
-            
-            <div class="flex justify-center">
-                <div onclick="cerrarModal()" class="w-12 h-1.5 bg-slate-200 rounded-full cursor-pointer hover:bg-slate-300"></div>
-            </div>
-
-            <div class="flex justify-between items-center">
-                <h3 class="text-xl font-bold text-black">Nuevo Hábito</h3>
-                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-slate-100 rounded-full">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-
-            <form id="form-nuevo-habito" onsubmit="event.preventDefault();" class="space-y-4">
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">¿Qué hábito quieres crear?</label>
-                    <input type="text" id="habito-nombre" placeholder="Ej. Meditar, Leer, Estudiar..." required
-                        class="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:bg-white focus:border-black font-semibold text-black transition-all">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Emoji Icono</label>
-                        <button type="button" onclick="abrirSelectorEmoji()" 
-                                class="w-full px-4 py-3 bg-slate-100 rounded-2xl flex items-center gap-3 active:scale-[0.98] transition-all">
-                            <span id="emoji-seleccionado" class="text-2xl">🏃</span>
-                            <span class="text-sm font-semibold text-slate-500">Toca para elegir</span>
-                            <span class="ml-auto text-slate-400 text-xs">›</span>
-                        </button>
-                        <input type="hidden" id="habito-emoji" value="🏃">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Meta Semanal</label>
-                        <select id="habito-meta" class="w-full px-4 py-3 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:bg-white focus:border-black font-semibold text-black appearance-none cursor-pointer">
-                            <option value="1">1 día / sem</option>
-                            <option value="3">3 días / sem</option>
-                            <option value="4">4 días / sem</option>
-                            <option value="5">5 días / sem</option>
-                            <option value="7">Todos los días</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-[#333538] text-white font-bold text-sm py-3.5 rounded-2xl shadow-lg active:scale-[0.98] transition-all mt-2">
-                    Crear Meta
-                </button>
-            </form>
-        </div>
+    
+<!-- PANTALLA DE CREAR HÁBITO -->
+<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-black z-30 flex flex-col">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
+        <button onclick="cerrarModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 active:scale-90 transition-transform">
+            <i data-lucide="x" class="w-5 h-5 text-black dark:text-white"></i>
+        </button>
+        <h2 class="text-base font-black text-black dark:text-white">Nuevo hábito</h2>
+        <div class="w-10"></div>
     </div>
-    <script src="app.js"></script>
-    <!-- SELECTOR DE EMOJI -->
-    <div id="selector-emoji" class="hidden fixed inset-0 z-50 flex items-end justify-center">
-        <div onclick="cerrarSelectorEmoji()" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white w-full max-w-md rounded-t-[32px] p-6 pb-10 shadow-2xl">
-            <div class="flex justify-center mb-4">
-                <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+
+    <!-- Contenido scrollable -->
+    <div class="flex-1 overflow-y-auto px-6 pb-8 space-y-7">
+
+        <!-- Nombre -->
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nombre del hábito</label>
+                <span id="contador-caracteres" class="text-[11px] font-bold text-slate-300">0/30</span>
             </div>
-            <h3 class="text-base font-bold text-black mb-4">Elige un emoji</h3>
-            <div id="grid-emojis-panel" class="grid grid-cols-7 gap-2 max-h-64 overflow-y-auto">
-            </div>
+            <input type="text" id="habito-nombre" maxlength="30" placeholder="Ej. Meditar, Leer, Correr..."
+                oninput="actualizarContador(this)"
+                class="w-full px-4 py-4 bg-slate-100 dark:bg-white/10 rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all">
         </div>
+
+        <!-- Color de acento -->
+        <div class="space-y-3">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Color</label>
+            <div class="flex gap-3 flex-wrap">
+                <button type="button" onclick="seleccionarColor('#6C63FF', this)" data-color="#6C63FF"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all ring-2 ring-offset-2 ring-[#6C63FF]"
+                    style="background:#6C63FF"></button>
+                <button type="button" onclick="seleccionarColor('#FF6B6B', this)" data-color="#FF6B6B"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#FF6B6B"></button>
+                <button type="button" onclick="seleccionarColor('#00C9A7', this)" data-color="#00C9A7"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#00C9A7"></button>
+                <button type="button" onclick="seleccionarColor('#FF9F43', this)" data-color="#FF9F43"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#FF9F43"></button>
+                <button type="button" onclick="seleccionarColor('#4FC3F7', this)" data-color="#4FC3F7"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#4FC3F7"></button>
+                <button type="button" onclick="seleccionarColor('#F368E0', this)" data-color="#F368E0"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#F368E0"></button>
+                <button type="button" onclick="seleccionarColor('#A8E063', this)" data-color="#A8E063"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#A8E063"></button>
+                <button type="button" onclick="seleccionarColor('#778CA3', this)" data-color="#778CA3"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#778CA3"></button>
+            </div>
+            <input type="hidden" id="habito-color" value="#6C63FF">
+        </div>
+
+        <!-- Emoji por categorías -->
+        <div class="space-y-3">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Icono</label>
+            
+            <!-- Categorías -->
+            <div class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                <button onclick="mostrarCategoriaEmoji('deporte', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-[#6C63FF] text-white transition-all">
+                    Deporte
+                </button>
+                <button onclick="mostrarCategoriaEmoji('salud', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Salud
+                </button>
+                <button onclick="mostrarCategoriaEmoji('mente', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Mente
+                </button>
+                <button onclick="mostrarCategoriaEmoji('finanzas', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Finanzas
+                </button>
+                <button onclick="mostrarCategoriaEmoji('creatividad', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Creatividad
+                </button>
+                <button onclick="mostrarCategoriaEmoji('hogar', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Hogar
+                </button>
+            </div>
+
+            <!-- Fila de emojis -->
+            <div id="fila-emojis" class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] py-1">
+            </div>
+
+            <!-- Emoji seleccionado preview -->
+            <div class="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-white/10 rounded-2xl">
+                <span id="emoji-preview" class="text-3xl">🏃</span>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 dark:text-white/40">Icono seleccionado</p>
+                    <p id="emoji-nombre-preview" class="text-sm font-black text-black dark:text-white">Correr</p>
+                </div>
+            </div>
+            <input type="hidden" id="habito-emoji" value="🏃">
+        </div>
+
+        <!-- Meta semanal -->
+        <div class="space-y-3">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Meta semanal</label>
+            <div class="flex gap-2">
+                <button onclick="seleccionarMeta(1, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">1d</button>
+                <button onclick="seleccionarMeta(2, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">2d</button>
+                <button onclick="seleccionarMeta(3, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">3d</button>
+                <button onclick="seleccionarMeta(4, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">4d</button>
+                <button onclick="seleccionarMeta(5, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">5d</button>
+                <button onclick="seleccionarMeta(7, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">7d</button>
+            </div>
+            <p id="meta-descripcion" class="text-xs text-slate-400 font-medium text-center">Selecciona cuántos días por semana</p>
+            <input type="hidden" id="habito-meta" value="1">
+        </div>
+
+    </div>
+
+    <!-- Botón crear fijo al fondo -->
+    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/5">
+        <button onclick="crearHabitoNuevo()"
+            id="btn-crear-habito"
+            class="w-full py-4 rounded-2xl text-white font-black text-base active:scale-[0.98] transition-all"
+            style="background: #6C63FF;">
+            Crear hábito →
+        </button>
     </div>
 </div>
+<script src="app.js"></script>
 </body>
 </html>
