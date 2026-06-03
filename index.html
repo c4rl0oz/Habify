@@ -14,33 +14,72 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="supabase.js"></script>
 </head>
 <body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
+
 <div id="pantalla-auth" class="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col justify-center px-8 gap-6">
-        <div class="space-y-1">
-        <h1 class="text-4xl font-black text-black">Habify</h1>
+    <div class="space-y-1">
+        <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
         <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
     </div>
 
-    <div class="space-y-3">
+    <!-- Tabs de Login / Registro -->
+    <div class="flex bg-slate-100 dark:bg-[#111111] rounded-2xl p-1">
+        <button id="tab-login" onclick="cambiarTab('login')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all bg-white dark:bg-[#333538] text-black dark:text-white shadow-sm">
+            Iniciar sesión
+        </button>
+        <button id="tab-registro" onclick="cambiarTab('registro')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all text-slate-400">
+            Registrarse
+        </button>
+    </div>
+
+    <!-- Formulario Login -->
+    <div id="form-login" class="space-y-3">
         <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tu nombre</label>
-            <input type="text" id="auth-nombre" placeholder="Ej. Carlos, Ana..." 
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#333538] focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="login-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
-            <input type="password" id="auth-password" placeholder="Mínimo 4 caracteres"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#333538] focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+            <input type="password" id="login-password" placeholder="Tu contraseña"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
-        <p id="auth-error" class="text-xs text-rose-500 font-medium hidden">Por favor completa todos los campos.</p>
+        <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
+        <button onclick="loginUsuario()"
+                class="w-full bg-[#333538] dark:bg-white text-white dark:text-black font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all">
+            Entrar →
+        </button>
     </div>
 
-    <button onclick="registrarUsuario()" class="w-full bg-[#333538] text-white font-bold text-sm py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all">
-        Comenzar →
-    </button>
+    <!-- Formulario Registro -->
+    <div id="form-registro" class="space-y-3 hidden">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
+            <input type="text" id="registro-nombre" placeholder="Tu nombre"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="registro-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#111111] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+        <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
+        <button onclick="registrarUsuario()"
+                class="w-full bg-[#333538] dark:bg-white text-white dark:text-black font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all">
+            Crear cuenta →
+        </button>
+    </div>
 
-    <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan solo en este dispositivo</p>
+    <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
 </div>
 
 <!-- PANTALLA DE PERFIL -->

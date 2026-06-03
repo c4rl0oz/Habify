@@ -1,3 +1,9 @@
+// Variables globales
+let misHabitos = [];
+let usuarioActual = null;
+let fechaActualCalendario = new Date();
+let graficaSemanal = null;
+let graficaMensual = null;
 
 function hoyComoTexto() {
     const hoy = new Date();
@@ -11,12 +17,6 @@ function hoyComoTexto() {
 function fechaComoTexto(year, mes, dia) {
     return `${year}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
-
-
-// BASE DE DATOS
-
-let misHabitos = JSON.parse(localStorage.getItem('habify_habitos')) || [];
-
 // ============================================================
 // CÁLCULOS AUTOMÁTICOS (ya no hay números manuales)
 // ============================================================
@@ -98,61 +98,160 @@ function calcularRachaMaxima(habito) {
 }
 
 // ============================================================
-// GUARDAR EN LOCALSTORAGE
+// AUTENTICACIÓN CON SUPABASE
 // ============================================================
-function guardarEnAlmacenamiento() {
-    localStorage.setItem('habify_habitos', JSON.stringify(misHabitos));
-}
+function cambiarTab(tab) {
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegistro = document.getElementById('tab-registro');
+    const formLogin = document.getElementById('form-login');
+    const formRegistro = document.getElementById('form-registro');
 
-// ============================================================
-// AUTENTICACIÓN Y PERFIL
-// ============================================================
-
-function verificarSesion() {
-    const usuario = JSON.parse(localStorage.getItem('habify_usuario'));
-    if (!usuario) {
-        document.getElementById('pantalla-auth').classList.remove('hidden');
+    if (tab === 'login') {
+        tabLogin.classList.add('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
+        tabLogin.classList.remove('text-slate-400');
+        tabRegistro.classList.remove('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
+        tabRegistro.classList.add('text-slate-400');
+        formLogin.classList.remove('hidden');
+        formRegistro.classList.add('hidden');
     } else {
-        document.getElementById('pantalla-auth').classList.add('hidden');
-        actualizarUIUsuario(usuario);
+        tabRegistro.classList.add('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
+        tabRegistro.classList.remove('text-slate-400');
+        tabLogin.classList.remove('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
+        tabLogin.classList.add('text-slate-400');
+        formRegistro.classList.remove('hidden');
+        formLogin.classList.add('hidden');
     }
 }
 
-function registrarUsuario() {
-    const nombre = document.getElementById('auth-nombre').value.trim();
-    const password = document.getElementById('auth-password').value.trim();
-    const error = document.getElementById('auth-error');
+async function registrarUsuario() {
+    const nombre = document.getElementById('registro-nombre').value.trim();
+    const correo = document.getElementById('registro-correo').value.trim();
+    const password = document.getElementById('registro-password').value.trim();
+    const error = document.getElementById('registro-error');
 
-    if (!nombre || password.length < 4) {
+    if (!nombre || !correo || password.length < 4) {
+        error.innerText = 'Completa todos los campos correctamente.';
+        error.classList.remove('hidden');
+        return;
+    }
+
+    error.classList.add('hidden');
+    
+    // Mostrar loading
+    const btn = event.target;
+    btn.innerText = 'Creando cuenta...';
+    btn.disabled = true;
+
+    const resultado = await registrarUsuarioSupabase(nombre, correo, password);
+
+    if (resultado.error) {
+        error.innerText = resultado.error;
+        error.classList.remove('hidden');
+        btn.innerText = 'Crear cuenta →';
+        btn.disabled = false;
+        return;
+    }
+
+    usuarioActual = resultado.usuario;
+    localStorage.setItem('habify_usuario_id', usuarioActual.id);
+    await cargarDatosUsuario();
+    document.getElementById('pantalla-auth').classList.add('hidden');
+    actualizarUIUsuario(usuarioActual);
+}
+
+async function loginUsuario() {
+    const correo = document.getElementById('login-correo').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const error = document.getElementById('login-error');
+
+    if (!correo || !password) {
         error.classList.remove('hidden');
         return;
     }
 
     error.classList.add('hidden');
 
-    const usuario = {
-        nombre: nombre,
-        password: password,
-        fechaRegistro: hoyComoTexto()
-    };
+    const btn = event.target;
+    btn.innerText = 'Entrando...';
+    btn.disabled = true;
 
-    localStorage.setItem('habify_usuario', JSON.stringify(usuario));
+    const resultado = await loginUsuarioSupabase(correo, password);
+
+    if (resultado.error) {
+        error.innerText = resultado.error;
+        error.classList.remove('hidden');
+        btn.innerText = 'Entrar →';
+        btn.disabled = false;
+        return;
+    }
+
+    usuarioActual = resultado.usuario;
+    localStorage.setItem('habify_usuario_id', usuarioActual.id);
+    await cargarDatosUsuario();
     document.getElementById('pantalla-auth').classList.add('hidden');
-    actualizarUIUsuario(usuario);
+    actualizarUIUsuario(usuarioActual);
+}
+
+async function verificarSesion() {
+    const usuarioId = localStorage.getItem('habify_usuario_id');
+    if (!usuarioId) {
+        document.getElementById('pantalla-auth').classList.remove('hidden');
+        return;
+    }
+
+    // Buscar usuario en Supabase
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}&select=*`,
+        { headers }
+    );
+    const data = await res.json();
+
+    if (data.length === 0) {
+        localStorage.removeItem('habify_usuario_id');
+        document.getElementById('pantalla-auth').classList.remove('hidden');
+        return;
+    }
+
+    usuarioActual = data[0];
+    await cargarDatosUsuario();
+    document.getElementById('pantalla-auth').classList.add('hidden');
+    actualizarUIUsuario(usuarioActual);
+}
+
+async function cargarDatosUsuario() {
+    if (!usuarioActual) return;
+
+    // Cargar hábitos desde Supabase
+    const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
+    
+    // Cargar registros desde Supabase
+    const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
+
+    // Convertir al formato que usa la app
+    misHabitos = habitosDB.map(h => ({
+        id: h.id,
+        nombre: h.nombre,
+        emoji: h.emoji,
+        metaSemanal: h.meta_semanal,
+        fechaCreacion: h.fecha_creacion,
+        registros: registrosDB
+            .filter(r => r.habito_id === h.id)
+            .map(r => r.fecha)
+    }));
+
+    renderizarHabitos();
+    actualizarResumenHoy();
 }
 
 function actualizarUIUsuario(usuario) {
     const inicial = usuario.nombre.charAt(0).toUpperCase();
-
-    // Actualizar inicial en header
     const headerInicial = document.getElementById('header-inicial');
     if (headerInicial) headerInicial.innerText = inicial;
 
-    // Actualizar saludo con nombre
     const saludo = document.getElementById('greeting-title');
     if (saludo) {
         const hora = new Date().getHours();
-        let mensaje = "";
+        let mensaje = '';
         if (hora >= 6 && hora < 12) mensaje = `Buenos Días, ${usuario.nombre}! ☀️`;
         else if (hora >= 12 && hora < 19) mensaje = `Buenas Tardes, ${usuario.nombre}! 🌤️`;
         else mensaje = `Buenas Noches, ${usuario.nombre}! 🌙`;
@@ -161,25 +260,22 @@ function actualizarUIUsuario(usuario) {
 }
 
 function abrirPerfil() {
-    const usuario = JSON.parse(localStorage.getItem('habify_usuario'));
-    if (!usuario) return;
+    if (!usuarioActual) return;
 
-    const inicial = usuario.nombre.charAt(0).toUpperCase();
+    const inicial = usuarioActual.nombre.charAt(0).toUpperCase();
     document.getElementById('perfil-inicial').innerText = inicial;
-    document.getElementById('perfil-nombre').innerText = usuario.nombre;
+    document.getElementById('perfil-nombre').innerText = usuarioActual.nombre;
     document.getElementById('perfil-total-habitos').innerText = misHabitos.length;
 
-    // Calcular días usando la app
-    const fechaRegistro = new Date(usuario.fechaRegistro + "T00:00:00");
+    const fechaRegistro = new Date(usuarioActual.fecha_registro + "T00:00:00");
     const hoy = new Date();
     const dias = Math.floor((hoy - fechaRegistro) / 86400000) + 1;
     document.getElementById('perfil-dias-uso').innerText = dias;
 
-    // Calcular racha máxima global entre todos los hábitos
     const rachaMaxGlobal = misHabitos.reduce((max, habito) => {
         return Math.max(max, calcularRachaMaxima(habito));
     }, 0);
-    document.getElementById('perfil-racha-max').innerText = 
+    document.getElementById('perfil-racha-max').innerText =
         rachaMaxGlobal > 0 ? `🔥 ${rachaMaxGlobal} días` : '—';
 
     document.getElementById('pantalla-perfil').classList.remove('hidden');
@@ -190,12 +286,14 @@ function cerrarPerfil() {
 }
 
 function cerrarSesion() {
-    if (confirm('¿Seguro que quieres cerrar sesión? Tus hábitos se mantendrán guardados.')) {
-        localStorage.removeItem('habify_usuario');
+    if (confirm('¿Seguro que quieres cerrar sesión?')) {
+        localStorage.removeItem('habify_usuario_id');
+        usuarioActual = null;
+        misHabitos = [];
         document.getElementById('pantalla-perfil').classList.add('hidden');
         document.getElementById('pantalla-auth').classList.remove('hidden');
-        document.getElementById('auth-nombre').value = '';
-        document.getElementById('auth-password').value = '';
+        document.getElementById('login-correo').value = '';
+        document.getElementById('login-password').value = '';
     }
 }
 // ============================================================
@@ -282,12 +380,12 @@ function renderizarHabitos() {
         const widgetHTML = `
             <div class="${fondoWidget} p-5 rounded-[28px] flex flex-col justify-between h-44 border relative transition-all duration-300">
                 
-                <button onclick="eliminarHabito(${habito.id})" 
+                <button onclick="eliminarHabito('${habito.id}')"
                     class="absolute top-4 right-4 ${esModoOscuro ? 'text-white/20 hover:text-white/60' : 'text-slate-300 hover:text-rose-400'} active:scale-90 transition-all p-1 text-xs">
                     ✕
                 </button>
 
-                <div onclick="toggleHabitoHoy(${habito.id})" 
+                <div onclick="toggleHabitoHoy('${habito.id}')"
                      class="relative w-12 h-12 flex items-center justify-center cursor-pointer active:scale-90 transition-transform select-none">
                     <svg class="absolute w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                         <path class="text-slate-300" stroke-width="3" stroke="currentColor" fill="none" 
@@ -317,50 +415,38 @@ function renderizarHabitos() {
 // TOGGLE HÁBITO HOY
 // Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
 // ============================================================
-function toggleHabitoHoy(id) {
+async function toggleHabitoHoy(id) {
     const habito = misHabitos.find(h => h.id === id);
-    if (!habito) return;
+    if (!habito || !usuarioActual) return;
 
     const hoy = hoyComoTexto();
 
     if (habito.registros.includes(hoy)) {
+        await desmarcarHabitoSupabase(id, hoy);
         habito.registros = habito.registros.filter(f => f !== hoy);
     } else {
+        await marcarHabitoSupabase(id, usuarioActual.id, hoy);
         habito.registros.push(hoy);
-
-        // Vibración suave en móvil real
         if (navigator.vibrate) navigator.vibrate(50);
-
-        // Animación de completado: buscamos el widget por id
-        const widgets = document.querySelectorAll('#contenedor-widgets > div');
-        const index = misHabitos.findIndex(h => h.id === id);
-        if (widgets[index]) {
-            widgets[index].style.transition = 'transform 0.15s ease';
-            widgets[index].style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                widgets[index].style.transform = 'scale(1)';
-            }, 150);
-        }
     }
 
-    guardarEnAlmacenamiento();
     renderizarHabitos();
 }
 
 // ============================================================
 // ELIMINAR HÁBITO
 // ============================================================
-function eliminarHabito(id) {
+async function eliminarHabito(id) {
     const habito = misHabitos.find(h => h.id === id);
     if (!habito) return;
 
-    // Mostramos confirmación antes de borrar
-    const confirmar = confirm(`¿Eliminar "${habito.nombre}"?\n\nSe borrará todo su historial de registros.`);
+    const confirmar = confirm(`¿Eliminar "${habito.nombre}"?\n\nSe borrará todo su historial.`);
     if (!confirmar) return;
 
+    await eliminarHabitoSupabase(id);
     misHabitos = misHabitos.filter(h => h.id !== id);
-    guardarEnAlmacenamiento();
     renderizarHabitos();
+    actualizarResumenHoy();
 }
 // ============================================================
 // MODAL DE CREAR HÁBITO
@@ -373,27 +459,40 @@ function cerrarModal() {
     document.getElementById('modal-container').classList.add('hidden');
 }
 
-document.getElementById('form-nuevo-habito').addEventListener('submit', function(event) {
+document.getElementById('form-nuevo-habito').addEventListener('submit', async function(event) {
     event.preventDefault();
 
     const nombreInput = document.getElementById('habito-nombre').value.trim();
     const emojiInput = document.getElementById('habito-emoji').value;
     const metaInput = parseInt(document.getElementById('habito-meta').value);
 
-    if (!nombreInput) return;
+    if (!nombreInput || !usuarioActual) return;
+
+    const resultado = await crearHabitoSupabase(
+        usuarioActual.id,
+        nombreInput,
+        emojiInput,
+        metaInput,
+        hoyComoTexto()
+    );
+
+    if (resultado.error) {
+        alert('Error al crear hábito. Intenta de nuevo.');
+        return;
+    }
 
     const nuevoHabito = {
-        id: Date.now(),
-        nombre: nombreInput,
-        emoji: emojiInput,
-        metaSemanal: metaInput,
-        fechaCreacion: hoyComoTexto(),
-        registros: []  // empieza sin ningún día completado
+        id: resultado.habito.id,
+        nombre: resultado.habito.nombre,
+        emoji: resultado.habito.emoji,
+        metaSemanal: resultado.habito.meta_semanal,
+        fechaCreacion: resultado.habito.fecha_creacion,
+        registros: []
     };
 
     misHabitos.push(nuevoHabito);
-    guardarEnAlmacenamiento();
     renderizarHabitos();
+    actualizarResumenHoy();
     this.reset();
     cerrarModal();
 });
@@ -401,8 +500,6 @@ document.getElementById('form-nuevo-habito').addEventListener('submit', function
 // ============================================================
 // CALENDARIO
 // ============================================================
-let fechaActualCalendario = new Date();
-
 function generarCalendarioMensual() {
     const tituloMes = document.getElementById('calendario-mes-titulo');
     const cuadrilla = document.getElementById('cuadrilla-mensual');
@@ -555,9 +652,6 @@ function actualizarResumenHoy() {
 // ============================================================
 // ESTADÍSTICAS
 // ============================================================
-
-let graficaSemanal = null; // Variable global para guardar la gráfica
-let graficaMensual = null; // Variable global para la gráfica mensual
 
 function irAPantalla(pantalla) {
     const inicio = document.getElementById('pantalla-inicio');
@@ -942,30 +1036,25 @@ function cargarNotaDia(fechaStr) {
     textarea.value = notas[fechaStr] || '';
 }
 
-function guardarNotaDia() {
+async function guardarNotaDia() {
     const textarea = document.getElementById('nota-dia');
     const msg = document.getElementById('nota-guardada-msg');
-    if (!textarea) return;
+    if (!textarea || !usuarioActual) return;
 
     const fechaActual = textarea.dataset.fecha;
     if (!fechaActual) return;
 
-    const notas = obtenerNotas();
     const texto = textarea.value.trim();
 
-    if (texto) {
-        notas[fechaActual] = texto;
-    } else {
-        delete notas[fechaActual]; // Si está vacío, borramos la nota
+    // Buscamos el primer hábito del día para vincular la nota
+    const habitoDelDia = misHabitos.find(h => h.registros.includes(fechaActual));
+    
+    if (habitoDelDia) {
+        await guardarNotaSupabase(habitoDelDia.id, usuarioActual.id, fechaActual, texto);
     }
 
-    guardarNotas(notas);
-
-    // Mostrar mensaje de confirmación
     msg.classList.remove('hidden');
     setTimeout(() => msg.classList.add('hidden'), 2000);
-
-    // Actualizar el calendario para mostrar indicador de nota
     generarCalendarioMensual();
 }
 
