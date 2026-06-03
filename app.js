@@ -632,7 +632,7 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     }
 
     // Cargar nota guardada de ese día
-    cargarNotaDia(fechaStr);
+    cargarNotaDia(fechaStr).catch(console.error);
 }
 
 function actualizarResumenHoy() {
@@ -1029,11 +1029,12 @@ function guardarNotas(notas) {
     localStorage.setItem('habify_notas', JSON.stringify(notas));
 }
 
-function cargarNotaDia(fechaStr) {
-    const notas = obtenerNotas();
+async function cargarNotaDia(fechaStr) {
     const textarea = document.getElementById('nota-dia');
-    if (!textarea) return;
-    textarea.value = notas[fechaStr] || '';
+    if (!textarea || !usuarioActual) return;
+    
+    const nota = await obtenerNotaDiaSupabase(usuarioActual.id, fechaStr);
+    textarea.value = nota;
 }
 
 async function guardarNotaDia() {
@@ -1046,11 +1047,36 @@ async function guardarNotaDia() {
 
     const texto = textarea.value.trim();
 
-    // Buscamos el primer hábito del día para vincular la nota
-    const habitoDelDia = misHabitos.find(h => h.registros.includes(fechaActual));
-    
-    if (habitoDelDia) {
-        await guardarNotaSupabase(habitoDelDia.id, usuarioActual.id, fechaActual, texto);
+    // Buscamos si hay registros ese día para vincular la nota
+    const registrosDelDia = await fetch(
+        `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioActual.id}&fecha=eq.${fechaActual}&select=id,habito_id`,
+        { headers }
+    ).then(r => r.json());
+
+    if (registrosDelDia.length > 0) {
+        // Actualizamos la nota en el primer registro del día
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/registros?id=eq.${registrosDelDia[0].id}`,
+            {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({ nota: texto })
+            }
+        );
+    } else {
+        // No hay registros ese día, guardamos en el primer hábito disponible
+        if (misHabitos.length > 0) {
+            await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    habito_id: misHabitos[0].id,
+                    usuario_id: usuarioActual.id,
+                    fecha: fechaActual,
+                    nota: texto
+                })
+            });
+        }
     }
 
     msg.classList.remove('hidden');

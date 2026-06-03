@@ -135,3 +135,13 @@ async function guardarNotaSupabase(habitoId, usuarioId, fecha, nota) {
         });
     }
 }
+
+async function obtenerNotaDiaSupabase(usuarioId, fecha) {
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioId}&fecha=eq.${fecha}&select=nota,habito_id`,
+        { headers }
+    );
+    const data = await res.json();
+    if (data.length === 0) return '';
+    return data[0].nota || '';
+}
