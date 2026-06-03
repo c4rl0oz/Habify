@@ -402,6 +402,7 @@ document.getElementById('form-nuevo-habito').addEventListener('submit', function
 // CALENDARIO
 // ============================================================
 let fechaActualCalendario = new Date();
+
 function generarCalendarioMensual() {
     const tituloMes = document.getElementById('calendario-mes-titulo');
     const cuadrilla = document.getElementById('cuadrilla-mensual');
@@ -438,6 +439,7 @@ function generarCalendarioMensual() {
 
         // Verificamos si ese día tiene al menos un hábito completado (datos REALES)
         const tieneRegistros = misHabitos.some(h => h.registros && Array.isArray(h.registros) && h.registros.includes(fechaDia));
+        const tieneNota = obtenerNotas()[fechaDia] !== undefined;
 
         let clasesEstilo = "";
 
@@ -452,9 +454,19 @@ function generarCalendarioMensual() {
             clasesEstilo = "bg-slate-100 text-slate-800 hover:bg-slate-800 hover:text-white rounded-full";
         }
 
-        const indicador = (!esFuturo && !esHoy && tieneRegistros)
-            ? `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>`
-            : '';
+        let indicador = '';
+        if (!esFuturo && !esHoy) {
+            if (tieneRegistros && tieneNota) {
+                indicador = `
+                    <span class="absolute bottom-0.5 left-1/3 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>
+                    <span class="absolute bottom-0.5 right-1/3 translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full"></span>
+                `;
+            } else if (tieneRegistros) {
+                indicador = `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>`;
+            } else if (tieneNota) {
+                indicador = `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full"></span>`;
+            }
+        }
 
         cuadrilla.innerHTML += `
             <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
@@ -477,32 +489,43 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     const panelVistaRapida = document.getElementById('vista-rapida-dia');
     const tituloResumen = document.getElementById('resumen-dia-titulo');
     const contenedorLista = document.getElementById('lista-habitos-cumplidos');
+    const textarea = document.getElementById('nota-dia');
+    const msg = document.getElementById('nota-guardada-msg');
 
     panelVistaRapida.classList.remove('hidden');
-    contenedorLista.innerHTML = "";
+    contenedorLista.innerHTML = '';
+    msg.classList.add('hidden');
 
     if (esFuturo) {
         tituloResumen.innerText = "Día futuro";
         contenedorLista.innerHTML = `<span class="text-xs text-slate-400 font-medium">Este día aún no ha ocurrido.</span>`;
+        textarea.value = '';
+        textarea.disabled = true;
+        textarea.placeholder = 'No puedes escribir en días futuros';
         return;
     }
 
-    // Extraemos el número de día para mostrarlo en el título
+    // Habilitamos el textarea para días pasados y hoy
+    textarea.disabled = false;
+    textarea.placeholder = '¿Cómo fue tu día? Escribe algo...';
+
+    // Guardamos la fecha en el textarea para usarla al guardar
+    textarea.dataset.fecha = fechaStr;
+
     const numeroDia = parseInt(fechaStr.split('-')[2]);
     tituloResumen.innerText = `Logros del día ${numeroDia}`;
 
-    // Filtramos SOLO los hábitos que realmente se completaron ese día exacto
-    // Y además que ya existían en esa fecha (fechaCreacion <= fechaStr)
+    // Hábitos completados ese día
     const habitosDelDia = misHabitos.filter(h => {
         const existia = h.fechaCreacion <= fechaStr;
-        const loHizo = h.registros.includes(fechaStr);
+        const loHizo = h.registros && h.registros.includes(fechaStr);
         return existia && loHizo;
     });
 
     if (habitosDelDia.length > 0) {
         habitosDelDia.forEach(habito => {
             contenedorLista.innerHTML += `
-                <span class="bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm text-xs font-bold flex items-center gap-1">
+                <span class="bg-white dark:bg-black px-3 py-1.5 rounded-full border border-slate-200 dark:border-white/10 shadow-sm text-xs font-bold flex items-center gap-1 text-black dark:text-white">
                     ${habito.emoji} ${habito.nombre}
                 </span>
             `;
@@ -510,6 +533,9 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     } else {
         contenedorLista.innerHTML = `<span class="text-xs text-slate-400 font-medium">Ningún hábito completado este día.</span>`;
     }
+
+    // Cargar nota guardada de ese día
+    cargarNotaDia(fechaStr);
 }
 
 function actualizarResumenHoy() {
@@ -537,6 +563,7 @@ function irAPantalla(pantalla) {
     const inicio = document.getElementById('pantalla-inicio');
     const calendario = document.getElementById('pantalla-calendario');
     const estadisticas = document.getElementById('pantalla-estadisticas');
+    const resumen = document.getElementById('resumen-hoy');
 
     // Ocultamos todas las pantallas
     inicio.classList.add('hidden');
@@ -545,11 +572,14 @@ function irAPantalla(pantalla) {
 
     if (pantalla === 'inicio') {
         inicio.classList.remove('hidden');
+        resumen.classList.remove('hidden'); // Mostramos resumen solo en inicio
     } else if (pantalla === 'calendario') {
         calendario.classList.remove('hidden');
+        resumen.classList.add('hidden'); // Ocultamos resumen en calendario
         generarCalendarioMensual();
     } else if (pantalla === 'estadisticas') {
         estadisticas.classList.remove('hidden');
+        resumen.classList.add('hidden'); // Ocultamos resumen en estadísticas
         generarEstadisticas();
     }
 }
@@ -891,6 +921,52 @@ function toggleModoOscuro() {
         html.classList.add('dark');
         localStorage.setItem('habify_modo_oscuro', 'true');
     }
+}
+
+// ============================================================
+// REGISTRO DIARIO - NOTAS POR FECHA
+// ============================================================
+
+function obtenerNotas() {
+    return JSON.parse(localStorage.getItem('habify_notas')) || {};
+}
+
+function guardarNotas(notas) {
+    localStorage.setItem('habify_notas', JSON.stringify(notas));
+}
+
+function cargarNotaDia(fechaStr) {
+    const notas = obtenerNotas();
+    const textarea = document.getElementById('nota-dia');
+    if (!textarea) return;
+    textarea.value = notas[fechaStr] || '';
+}
+
+function guardarNotaDia() {
+    const textarea = document.getElementById('nota-dia');
+    const msg = document.getElementById('nota-guardada-msg');
+    if (!textarea) return;
+
+    const fechaActual = textarea.dataset.fecha;
+    if (!fechaActual) return;
+
+    const notas = obtenerNotas();
+    const texto = textarea.value.trim();
+
+    if (texto) {
+        notas[fechaActual] = texto;
+    } else {
+        delete notas[fechaActual]; // Si está vacío, borramos la nota
+    }
+
+    guardarNotas(notas);
+
+    // Mostrar mensaje de confirmación
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 2000);
+
+    // Actualizar el calendario para mostrar indicador de nota
+    generarCalendarioMensual();
 }
 
 // ============================================================
