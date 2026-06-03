@@ -241,12 +241,15 @@ async function cargarDatosUsuario() {
 
     renderizarHabitos();
     actualizarResumenHoy();
+    inicializarTiraDias();
 }
 
 function actualizarUIUsuario(usuario) {
     const inicial = usuario.nombre.charAt(0).toUpperCase();
     const headerInicial = document.getElementById('header-inicial');
     if (headerInicial) headerInicial.innerText = inicial;
+
+    //saludo dinámico personalizado
 
     const saludo = document.getElementById('greeting-title');
     if (saludo) {
@@ -306,6 +309,7 @@ function inicializarApp() {
     renderizarHabitos();
     actualizarResumenHoy();
     inicializarScrollResumen();
+    inicializarTiraDias();
 }
 
 // ============================================================
@@ -1084,6 +1088,101 @@ async function guardarNotaDia() {
     generarCalendarioMensual();
 }
 
+// ============================================================
+// TIRA DE DÍAS HORIZONTAL
+// ============================================================
+
+let diaSeleccionadoTira = hoyComoTexto();
+
+function inicializarTiraDias() {
+    const contenedor = document.getElementById('tira-dias');
+    const fechaHoyEl = document.getElementById('fecha-hoy');
+    if (!contenedor) return;
+
+    // Mostrar fecha actual en header
+    const hoy = new Date();
+    const nombresMeses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                          "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const diasSemana = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    if (fechaHoyEl) {
+        fechaHoyEl.innerText = `${diasSemana[hoy.getDay()]}, ${hoy.getDate()} de ${nombresMeses[hoy.getMonth()]}`;
+    }
+
+    contenedor.innerHTML = '';
+
+    // Generamos los últimos 14 días + hoy
+    const dias = [];
+    for (let i = 13; i >= 0; i--) {
+        const dia = new Date();
+        dia.setDate(hoy.getDate() - i);
+        dias.push(dia);
+    }
+
+    dias.forEach(dia => {
+        const fechaStr = fechaComoTexto(dia.getFullYear(), dia.getMonth(), dia.getDate());
+        const esHoy = fechaStr === hoyComoTexto();
+        const esSeleccionado = fechaStr === diaSeleccionadoTira;
+
+        // Verificar si ese día tiene hábitos completados
+        const completadosEseDia = misHabitos.filter(h =>
+            h.registros && h.registros.includes(fechaStr)
+        ).length;
+        const tieneActividad = completadosEseDia > 0;
+
+        const nombreDia = ["D","L","M","M","J","V","S"][dia.getDay()];
+        const numeroDia = dia.getDate();
+
+        const btn = document.createElement('button');
+        btn.dataset.fecha = fechaStr;
+        btn.className = 'tira-dia flex-shrink-0 flex flex-col items-center gap-0.5 px-2 py-1 transition-all active:scale-95';
+
+        btn.innerHTML = `
+            <span style="font-size:9px; font-weight:500; color:${esSeleccionado ? 'rgba(255,255,255,0.7)' : 'rgba(100,100,100,0.6)'}">${nombreDia}</span>
+            <div style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${esSeleccionado ? '#6C63FF' : 'transparent'}; border:${esHoy && !esSeleccionado ? '1.5px solid #6C63FF' : 'none'}">
+                <span style="font-size:13px; font-weight:800; color:${esSeleccionado ? '#fff' : esHoy ? '#6C63FF' : 'inherit'}">${numeroDia}</span>
+            </div>
+            <div style="width:4px; height:4px; border-radius:50%; background:${tieneActividad ? (esSeleccionado ? 'rgba(255,255,255,0.7)' : '#6C63FF') : 'transparent'}"></div>
+        `;
+
+        btn.onclick = () => seleccionarDiaTira(fechaStr);
+        contenedor.appendChild(btn);
+    });
+
+    // Auto-scroll al día de hoy
+    setTimeout(() => {
+        const hoyBtn = contenedor.querySelector(`[data-fecha="${hoyComoTexto()}"]`);
+        if (hoyBtn) hoyBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }, 100);
+}
+
+function seleccionarDiaTira(fechaStr) {
+    diaSeleccionadoTira = fechaStr;
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
+}
+
+function mostrarResumenDiaTira(fechaStr) {
+    const esHoy = fechaStr === hoyComoTexto();
+    const completados = misHabitos.filter(h =>
+        h.registros && h.registros.includes(fechaStr)
+    );
+    const total = misHabitos.filter(h => h.fechaCreacion <= fechaStr).length;
+
+    // Actualizamos el resumen de hoy
+    const textoResumen = document.getElementById('texto-resumen-hoy');
+    if (textoResumen) {
+        if (esHoy) {
+            textoResumen.innerText = `${completados.length} de ${total} hábitos completados hoy`;
+        } else {
+            const numeroDia = parseInt(fechaStr.split('-')[2]);
+            const mes = parseInt(fechaStr.split('-')[1]) - 1;
+            const nombresMeses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+            textoResumen.innerText = completados.length > 0
+                ? `${completados.length} de ${total} completados el ${numeroDia} de ${nombresMeses[mes]}`
+                : `Sin hábitos completados el ${numeroDia} de ${nombresMeses[mes]}`;
+        }
+    }
+}
 // ============================================================
 // ARRANCAR
 // ============================================================

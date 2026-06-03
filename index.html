@@ -114,7 +114,15 @@
             <span class="text-sm font-bold text-slate-600">Racha máxima</span>
             <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
         </div>
+        <div class="bg-slate-100 dark:bg-[#111111] p-4 rounded-2xl flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
+            <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
+                class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
+                <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
+            </button>
+        </div>
     </div>
+    
 
     <div class="mt-auto">
         <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all">
@@ -122,21 +130,17 @@
         </button>
     </div>
 </div>
-<header class="bg-white dark:bg-black px-6 pt-8 pb-4 flex justify-between items-center shrink-0">
-            <div>
-            <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black">Buenos Días!</h1>
+<header class="bg-white dark:bg-black px-6 pt-8 pb-4 shrink-0">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black dark:text-white">Buenos Días!</h1>
         </div>
-        
-        <div class="flex items-center gap-3">
-<button onclick="toggleModoOscuro()" class="bg-slate-100 dark:bg-white p-2.5 rounded-full text-black dark:text-black hover:bg-slate-200 active:scale-95 transition-all">
-                        <i data-lucide="sliders-horizontal" class="w-5 h-5 stroke-[2.5]"></i>
-            </button>
-
-            <button onclick="abrirPerfil()" class="w-10 h-10 rounded-full bg-[#333538] flex items-center justify-center border border-slate-200 active:scale-90 transition-transform">
-                <span id="header-inicial" class="text-sm font-black text-white">?</span>
-            </button>
-        </div>
-    </header>
+    </div>
+    
+    <!-- Tira de días horizontal -->
+    <div id="tira-dias" class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+    </div>
+</header>
 
     <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
         
@@ -232,37 +236,41 @@
 <div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-black/90 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm flex justify-between items-center">        
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hoy</p>
         <p id="texto-resumen-hoy" class="text-sm font-bold text-black dark:text-white">Cargando...</p>
-    </div>
-    <div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
-<nav class="bg-slate-200/95 dark:bg-white/10 backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-300/30 dark:border-white/10">
-                <div class="flex w-2/5 justify-around">
-                <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
-                    <i data-lucide="layout-grid" class="w-6 h-6 stroke-[2]"></i>
-                </button>
-                
-                <button onclick="irAPantalla('calendario')"class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
-                    <i data-lucide="calendar-days" class="w-6 h-6 stroke-[2]"></i>
-                </button>
-            </div>
+</div>
 
-            <div class="w-1/5 flex justify-center">
-                <button onclick="abrirModal()" class="bg-[#333538] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                     <i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>
+<!-- Barra de navegación inferior -->
+
+<div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
+    <nav class="bg-slate-200/95 dark:bg-white/10 backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-300/30 dark:border-white/10">
+        
+        <div class="flex w-2/5 justify-around">
+            <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 dark:text-white w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <i data-lucide="layout-grid" class="w-6 h-6 stroke-[2]"></i>
             </button>
-            </div>
+            <button onclick="irAPantalla('calendario')" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <i data-lucide="calendar-days" class="w-6 h-6 stroke-[2]"></i>
+            </button>
+        </div>
 
-            <div class="flex w-2/5 justify-around">
-                <button onclick="irAPantalla('estadisticas')" class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
-                    <i data-lucide="bar-chart-2" class="w-6 h-6 stroke-[2]"></i>
-                </button>
-                
-                <button class="flex flex-col items-center justify-center text-slate-500 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
-                    <i data-lucide="message-square" class="w-6 h-6 stroke-[2]"></i>
-                </button>
-            </div>
+        <div class="w-1/5 flex justify-center">
+            <button onclick="abrirModal()" class="bg-[#333538] dark:bg-white text-white dark:text-black w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                <i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>
+            </button>
+        </div>
 
-        </nav>
-    </div>
+        <div class="flex w-2/5 justify-around">
+            <button onclick="irAPantalla('estadisticas')" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <i data-lucide="bar-chart-2" class="w-6 h-6 stroke-[2]"></i>
+            </button>
+            <button onclick="abrirPerfil()" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <div id="header-inicial" class="w-8 h-8 rounded-full bg-[#333538] dark:bg-white flex items-center justify-center">
+                    <span class="text-xs font-black text-white dark:text-black">?</span>
+                </div>
+            </button>
+        </div>
+
+    </nav>
+</div>
 
     <script>
         lucide.createIcons();
