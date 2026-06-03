@@ -496,41 +496,6 @@ function cerrarModal() {
     document.getElementById('pantalla-crear-habito').classList.add('hidden');
 }
 
-    const nombreInput = document.getElementById('habito-nombre').value.trim();
-    const emojiInput = document.getElementById('habito-emoji').value;
-    const metaInput = parseInt(document.getElementById('habito-meta').value);
-
-    if (!nombreInput || !usuarioActual) return;
-
-    const resultado = await crearHabitoSupabase(
-        usuarioActual.id,
-        nombreInput,
-        emojiInput,
-        metaInput,
-        hoyComoTexto()
-    );
-
-    if (resultado.error) {
-        alert('Error al crear hábito. Intenta de nuevo.');
-        return;
-    }
-
-    const nuevoHabito = {
-        id: resultado.habito.id,
-        nombre: resultado.habito.nombre,
-        emoji: resultado.habito.emoji,
-        metaSemanal: resultado.habito.meta_semanal,
-        fechaCreacion: resultado.habito.fecha_creacion,
-        registros: []
-    };
-
-    misHabitos.push(nuevoHabito);
-    renderizarHabitos();
-    actualizarResumenHoy();
-    this.reset();
-    cerrarModal();
-});
-
 // ============================================================
 // CALENDARIO
 // ============================================================
