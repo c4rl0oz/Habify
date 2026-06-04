@@ -743,7 +743,7 @@ function generarGraficaSemanal() {
                 data: datos,
                 backgroundColor: fechasDias.map(fecha => {
                     const esHoy = fecha === hoyComoTexto();
-                    return esHoy ? '#333538' : '#cbd5e1';
+                    return esHoy ? '#6C63FF' : '#e2e8f0';
                 }),
                 borderRadius: 8,
                 borderSkipped: false,
@@ -818,8 +818,8 @@ function generarGraficaMensual() {
             datasets: [{
                 label: 'Hábitos completados',
                 data: datos,
-                borderColor: '#333538',
-                backgroundColor: 'rgba(51, 53, 56, 0.08)',
+                borderColor: '#6C63FF',
+                backgroundColor: 'rgba(108, 99, 255, 0.08)',
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 4,
