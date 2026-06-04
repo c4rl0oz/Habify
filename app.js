@@ -256,9 +256,10 @@ function actualizarUIUsuario(usuario) {
     if (saludo) {
         const hora = new Date().getHours();
         let mensaje = '';
-        if (hora >= 6 && hora < 12) mensaje = `Buenos Días, ${usuario.nombre}! ☀️`;
-        else if (hora >= 12 && hora < 19) mensaje = `Buenas Tardes, ${usuario.nombre}! 🌤️`;
-        else mensaje = `Buenas Noches, ${usuario.nombre}! 🌙`;
+        const primerNombre = usuario.nombre.split(' ')[0];
+        if (hora >= 6 && hora < 12) mensaje = `Buenos Días, ${primerNombre}! ☀️`;
+        else if (hora >= 12 && hora < 19) mensaje = `Buenas Tardes, ${primerNombre}! 🌤️`;
+        else mensaje = `Buenas Noches, ${primerNombre}! 🌙`;
         saludo.innerText = mensaje;
     }
 }
