@@ -312,6 +312,7 @@ function inicializarApp() {
     actualizarResumenHoy();
     inicializarScrollResumen();
     inicializarTiraDias();
+    setTimeout(() => lucide.createIcons(), 500);
 }
 
 // ============================================================
