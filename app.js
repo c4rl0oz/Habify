@@ -108,17 +108,17 @@ function cambiarTab(tab) {
     const formRegistro = document.getElementById('form-registro');
 
     if (tab === 'login') {
-        tabLogin.classList.add('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
-        tabLogin.classList.remove('text-slate-400');
-        tabRegistro.classList.remove('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
-        tabRegistro.classList.add('text-slate-400');
+        tabLogin.style.background = '#6C63FF';
+        tabLogin.style.color = 'white';
+        tabRegistro.style.background = 'transparent';
+        tabRegistro.style.color = '#94a3b8';
         formLogin.classList.remove('hidden');
         formRegistro.classList.add('hidden');
     } else {
-        tabRegistro.classList.add('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
-        tabRegistro.classList.remove('text-slate-400');
-        tabLogin.classList.remove('bg-white', 'dark:bg-[#333538]', 'text-black', 'dark:text-white', 'shadow-sm');
-        tabLogin.classList.add('text-slate-400');
+        tabRegistro.style.background = '#6C63FF';
+        tabRegistro.style.color = 'white';
+        tabLogin.style.background = 'transparent';
+        tabLogin.style.color = '#94a3b8';
         formRegistro.classList.remove('hidden');
         formLogin.classList.add('hidden');
     }
@@ -533,7 +533,7 @@ function generarCalendarioMensual() {
         let clasesEstilo = "";
 
         if (esHoy) {
-            clasesEstilo = "bg-[#333538] text-white rounded-2xl";
+            clasesEstilo = "text-white rounded-2xl";
         } else if (esFuturo) {
             clasesEstilo = "text-slate-300 cursor-not-allowed";
         } else if (tieneRegistros) {
@@ -558,12 +558,13 @@ function generarCalendarioMensual() {
         }
 
         cuadrilla.innerHTML += `
-            <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
-                    class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center ${clasesEstilo}">
-                ${dia}
-                ${indicador}
-            </button>
-        `;
+    <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
+            class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center ${clasesEstilo}"
+            style="${esHoy ? 'background:#6C63FF;' : ''}">
+        ${dia}
+        ${indicador}
+    </button>
+`;
     }
 }
 
