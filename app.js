@@ -336,32 +336,33 @@ function actualizarSaludo() {
 
 // ============================================================
 // RENDERIZAR WIDGETS
-// Ahora el anillo y el contador se calculan desde registros reales
 // ============================================================
 function renderizarHabitos() {
     const contenedor = document.getElementById('contenedor-widgets');
     if (!contenedor) return;
 
     contenedor.innerHTML = "";
+    contenedor.className = "space-y-3";
 
     if (misHabitos.length === 0) {
         contenedor.innerHTML = `
-            <div class="col-span-2 flex flex-col items-center justify-center py-8 text-center gap-4">
+            <div class="flex flex-col items-center justify-center py-16 text-center gap-4">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
                     <span class="text-4xl">🌱</span>
                 </div>
                 <div class="space-y-1">
-                    <p class="text-base font-black text-black">¡Empieza tu primer hábito!</p>
+                    <p class="text-base font-black text-black dark:text-white">¡Empieza tu primer hábito!</p>
                     <p class="text-xs text-slate-400 font-medium leading-relaxed">
                         Los grandes cambios comienzan<br>con un pequeño paso diario.
                     </p>
                 </div>
                 <button onclick="abrirModal()" 
-                        class="bg-[#333538] text-white font-bold text-sm px-6 py-3 rounded-2xl active:scale-95 transition-all shadow-md">
+                        class="text-white font-bold text-sm px-6 py-3 rounded-2xl active:scale-95 transition-all shadow-md"
+                        style="background:#6C63FF">
                     Crear mi primer hábito →
                 </button>
             </div>
-       `;
+        `;
         actualizarResumenHoy();
         return;
     }
@@ -371,48 +372,62 @@ function renderizarHabitos() {
         const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
         const yaHecho = completadoHoy(habito);
         const racha = calcularRacha(habito);
+        const color = habito.color || '#6C63FF';
 
-        const esModoOscuro = document.documentElement.classList.contains('dark');
+        const colorFondo = yaHecho ? color + '18' : 'transparent';
+        const borderColor = yaHecho ? color + '40' : '#e2e8f0';
 
-        const colorAnillo = yaHecho
-            ? (esModoOscuro ? "text-white" : "text-slate-600")
-            : (esModoOscuro ? "text-white" : "text-black");
-
-        const fondoWidget = yaHecho
-            ? (esModoOscuro ? "bg-white/10 border-white/10" : "bg-slate-300/80 border-slate-200")
-            : (esModoOscuro ? "bg-[#111111] border-white/5" : "bg-slate-200/70 border-slate-100/50");
-
-        const widgetHTML = `
-            <div class="${fondoWidget} p-5 rounded-[28px] flex flex-col justify-between h-44 border relative transition-all duration-300">
+        const tarjetaHTML = `
+            <div class="relative rounded-[20px] overflow-hidden border transition-all duration-300"
+                 style="background:${colorFondo}; border-color:${borderColor};">
                 
-                <button onclick="eliminarHabito('${habito.id}')"
-                    class="absolute top-4 right-4 ${esModoOscuro ? 'text-white/20 hover:text-white/60' : 'text-slate-300 hover:text-rose-400'} active:scale-90 transition-all p-1 text-xs">
-                    ✕
-                </button>
+                <!-- Barra de color izquierda -->
+                <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]"
+                     style="background:${color}"></div>
 
-                <div onclick="toggleHabitoHoy('${habito.id}')"
-                     class="relative w-12 h-12 flex items-center justify-center cursor-pointer active:scale-90 transition-transform select-none">
-                    <svg class="absolute w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path class="text-slate-300" stroke-width="3" stroke="currentColor" fill="none" 
-                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                        <path class="${colorAnillo} transition-all duration-500" 
-                              stroke-dasharray="${porcentaje}, 100" stroke-width="3" stroke-linecap="round" 
-                              stroke="currentColor" fill="none" 
-                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                    </svg>
-                    <span class="text-base z-10">${yaHecho ? '✓' : habito.emoji}</span>
-                </div>
-                
-                <div class="space-y-0.5">
-                    <p class="text-xs font-bold ${esModoOscuro ? 'text-white/50' : 'text-slate-500'} leading-none">${habito.nombre}</p>
-                    <p class="text-2xl font-black ${esModoOscuro ? 'text-white' : 'text-black'} leading-tight">${completados}/${habito.metaSemanal}</p>
-                    <p class="text-[11px] font-bold ${esModoOscuro ? 'text-white/40' : 'text-slate-400'} tracking-tight">
-                        ${racha > 0 ? `🔥 ${racha} días de racha` : 'esta semana'}
-                    </p>
+                <div class="flex items-center gap-4 px-5 py-4 pl-6">
+                    
+                    <!-- Emoji -->
+                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                         style="background:${color}18">
+                        <span class="text-2xl">${habito.emoji}</span>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <p class="text-xs font-bold text-slate-400">
+                                ${completados}/${habito.metaSemanal} esta semana
+                            </p>
+                            ${racha > 0 ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
+                        </div>
+                        <!-- Barra de progreso -->
+                        <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500"
+                                 style="width:${porcentaje}%; background:${color}"></div>
+                        </div>
+                    </div>
+
+                    <!-- Botón check -->
+                    <button onclick="toggleHabitoHoy('${habito.id}')"
+                            class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
+                            style="background:${yaHecho ? color : 'transparent'}; border: 2px solid ${yaHecho ? color : '#e2e8f0'}">
+                        ${yaHecho 
+                            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                            : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                        }
+                    </button>
+
+                    <!-- Botón eliminar -->
+                    <button onclick="eliminarHabito('${habito.id}')"
+                            class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-slate-300 hover:text-rose-400 active:scale-90 transition-all text-xs">
+                        ✕
+                    </button>
                 </div>
             </div>
         `;
-        contenedor.innerHTML += widgetHTML;
+        contenedor.innerHTML += tarjetaHTML;
     });
 }
 
