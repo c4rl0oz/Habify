@@ -436,6 +436,81 @@
         </button>
     </div>
 </div>
+<!-- PANTALLA DE DETALLE DE HÁBITO -->
+<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-black z-30 flex flex-col">
+    <div id="detalle-header" class="shrink-0 px-6 pt-12 pb-6">
+        <div class="flex items-center justify-between mb-6">
+            <button onclick="cerrarDetalleHabito()"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                <i data-lucide="arrow-left" class="w-5 h-5 text-black dark:text-white"></i>
+            </button>
+            <button onclick="eliminarHabitoDesdeDetalle()"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                <i data-lucide="trash-2" class="w-4 h-4 text-rose-500"></i>
+            </button>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="detalle-emoji-container" class="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl">
+                <span id="detalle-emoji">🏃</span>
+            </div>
+            <div>
+                <h1 id="detalle-nombre" class="text-2xl font-black text-black dark:text-white">Hábito</h1>
+                <p id="detalle-meta" class="text-sm font-bold text-slate-500 dark:text-white/50">Meta: 0 días / sem</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3">
+            <div id="stat-card-racha" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-racha-actual" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Racha actual</p>
+            </div>
+            <div id="stat-card-max" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-racha-max" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Mejor racha</p>
+            </div>
+            <div id="stat-card-total" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-total" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Total días</p>
+            </div>
+        </div>
+
+        <!-- Mapa de actividad -->
+        <div class="space-y-3">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actividad — últimos 3 meses</p>
+            <div id="mapa-actividad" class="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                <div id="grid-actividad" class="flex gap-1"></div>
+            </div>
+            <div class="flex items-center gap-2 justify-end">
+                <span class="text-[10px] text-slate-300 font-medium">Menos</span>
+                <div class="w-3 h-3 rounded-sm bg-slate-100"></div>
+                <div id="actividad-color-1" class="w-3 h-3 rounded-sm" style="opacity:0.3; background:#6C63FF"></div>
+                <div id="actividad-color-2" class="w-3 h-3 rounded-sm" style="opacity:0.6; background:#6C63FF"></div>
+                <div id="actividad-color-3" class="w-3 h-3 rounded-sm" style="background:#6C63FF"></div>
+                <span class="text-[10px] text-slate-300 font-medium">Más</span>
+            </div>
+        </div>
+
+        <!-- Últimos registros -->
+        <div class="space-y-3">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Últimos registros</p>
+            <div id="lista-ultimos-registros" class="space-y-2"></div>
+        </div>
+
+    </div>
+
+    <!-- Botón check -->
+    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/5">
+        <button id="detalle-btn-check" onclick="toggleDesdeDetalle()"
+            class="w-full py-4 rounded-2xl font-black text-base text-white active:scale-[0.98] transition-all"
+            style="background:#6C63FF;">
+            Marcar como hecho hoy ✓
+        </button>
+    </div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

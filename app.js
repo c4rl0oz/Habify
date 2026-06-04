@@ -1391,6 +1391,152 @@ async function crearHabitoNuevo() {
 }
 
 // ============================================================
+// PANTALLA DE DETALLE DE HÁBITO
+// ============================================================
+
+let habitoDetalleActual = null;
+
+function abrirDetalleHabito(id) {
+    const habito = misHabitos.find(h => h.id === id);
+    if (!habito) return;
+    habitoDetalleActual = habito;
+    const color = habito.color || '#6C63FF';
+
+    document.getElementById('detalle-header').style.background = color + '18';
+    document.getElementById('detalle-emoji').innerText = habito.emoji;
+    document.getElementById('detalle-emoji-container').style.background = color + '25';
+    document.getElementById('detalle-nombre').innerText = habito.nombre;
+    document.getElementById('detalle-meta').innerText = `Meta: ${habito.metaSemanal} días / semana`;
+
+    const racha = calcularRacha(habito);
+    const rachaMax = calcularRachaMaxima(habito);
+    const total = habito.registros.length;
+
+    ['stat-card-racha', 'stat-card-max', 'stat-card-total'].forEach(id => {
+        document.getElementById(id).style.background = color + '18';
+    });
+    ['stat-racha-actual', 'stat-racha-max', 'stat-total'].forEach(id => {
+        document.getElementById(id).style.color = color;
+    });
+
+    document.getElementById('stat-racha-actual').innerText = racha;
+    document.getElementById('stat-racha-max').innerText = rachaMax;
+    document.getElementById('stat-total').innerText = total;
+
+    ['actividad-color-1', 'actividad-color-2', 'actividad-color-3'].forEach(id => {
+        document.getElementById(id).style.background = color;
+    });
+
+    const yaHecho = completadoHoy(habito);
+    const btnCheck = document.getElementById('detalle-btn-check');
+    btnCheck.style.background = yaHecho ? '#e2e8f0' : color;
+    btnCheck.style.color = yaHecho ? '#94a3b8' : 'white';
+    btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
+
+    generarMapaActividad(habito);
+    generarUltimosRegistros(habito);
+
+    document.getElementById('pantalla-detalle-habito').classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function cerrarDetalleHabito() {
+    document.getElementById('pantalla-detalle-habito').classList.add('hidden');
+    habitoDetalleActual = null;
+}
+
+async function toggleDesdeDetalle() {
+    if (!habitoDetalleActual) return;
+    await toggleHabitoHoy(habitoDetalleActual.id);
+    abrirDetalleHabito(habitoDetalleActual.id);
+}
+
+async function eliminarHabitoDesdeDetalle() {
+    if (!habitoDetalleActual) return;
+    await eliminarHabito(habitoDetalleActual.id);
+    cerrarDetalleHabito();
+}
+
+function generarMapaActividad(habito) {
+    const grid = document.getElementById('grid-actividad');
+    grid.innerHTML = '';
+    const color = habito.color || '#6C63FF';
+    const hoy = new Date();
+    const inicio = new Date(hoy);
+    inicio.setDate(hoy.getDate() - 90);
+    inicio.setDate(inicio.getDate() - inicio.getDay());
+
+    let diaActual = new Date(inicio);
+    let semanaActual = [];
+    const columnas = [];
+
+    while (diaActual <= hoy) {
+        const fechaStr = fechaComoTexto(diaActual.getFullYear(), diaActual.getMonth(), diaActual.getDate());
+        semanaActual.push({
+            fechaStr,
+            tieneRegistro: habito.registros.includes(fechaStr),
+            esFuturo: diaActual > hoy
+        });
+        if (diaActual.getDay() === 6) {
+            columnas.push([...semanaActual]);
+            semanaActual = [];
+        }
+        diaActual.setDate(diaActual.getDate() + 1);
+    }
+    if (semanaActual.length > 0) columnas.push(semanaActual);
+
+    columnas.forEach(semana => {
+        const col = document.createElement('div');
+        col.style.display = 'flex';
+        col.style.flexDirection = 'column';
+        col.style.gap = '3px';
+        semana.forEach(({ tieneRegistro, esFuturo }) => {
+            const celda = document.createElement('div');
+            celda.style.width = '12px';
+            celda.style.height = '12px';
+            celda.style.borderRadius = '3px';
+            celda.style.flexShrink = '0';
+            celda.style.background = esFuturo ? 'transparent' : tieneRegistro ? color : '#e2e8f0';
+            col.appendChild(celda);
+        });
+        grid.appendChild(col);
+    });
+
+    setTimeout(() => {
+        const mapa = document.getElementById('mapa-actividad');
+        mapa.scrollLeft = mapa.scrollWidth;
+    }, 50);
+}
+
+function generarUltimosRegistros(habito) {
+    const contenedor = document.getElementById('lista-ultimos-registros');
+    contenedor.innerHTML = '';
+    const color = habito.color || '#6C63FF';
+    const registros = [...habito.registros].sort().reverse().slice(0, 10);
+
+    if (registros.length === 0) {
+        contenedor.innerHTML = `<p class="text-xs text-slate-400 font-medium">Aún no hay registros.</p>`;
+        return;
+    }
+
+    const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+    registros.forEach(fecha => {
+        const d = new Date(fecha + 'T00:00:00');
+        const esHoy = fecha === hoyComoTexto();
+        const etiqueta = esHoy ? 'Hoy' : `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
+        contenedor.innerHTML += `
+            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${color}10;">
+                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></div>
+                <p class="text-sm font-bold text-black dark:text-white flex-1">${etiqueta}</p>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+        `;
+    });
+}
+
+// ============================================================
 // ARRANCAR
 // ============================================================
 inicializarApp();
