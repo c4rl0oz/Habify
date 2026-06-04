@@ -257,9 +257,9 @@ function actualizarUIUsuario(usuario) {
         const hora = new Date().getHours();
         let mensaje = '';
         const primerNombre = usuario.nombre.split(' ')[0];
-        if (hora >= 6 && hora < 12) mensaje = `Buenos Días, ${primerNombre}! ☀️`;
-        else if (hora >= 12 && hora < 19) mensaje = `Buenas Tardes, ${primerNombre}! 🌤️`;
-        else mensaje = `Buenas Noches, ${primerNombre}! 🌙`;
+        if (hora >= 6 && hora < 12) mensaje = `Buenos Días, ${primerNombre}! `;
+        else if (hora >= 12 && hora < 19) mensaje = `Buenas Tardes, ${primerNombre}! `;
+        else mensaje = `Buenas Noches, ${primerNombre}! `;
         saludo.innerText = mensaje;
     }
 }
@@ -327,11 +327,11 @@ function actualizarSaludo() {
     const saludoElemento = document.getElementById('greeting-title');
     if (!saludoElemento) return;
     if (horaActual >= 6 && horaActual < 12) {
-        saludoElemento.innerText = "Buenos Días! ☀️";
+        saludoElemento.innerText = "Buenos Días! ";
     } else if (horaActual >= 12 && horaActual < 19) {
-        saludoElemento.innerText = "Buenas Tardes! 🌤️";
+        saludoElemento.innerText = "Buenas Tardes! ";
     } else {
-        saludoElemento.innerText = "Buenas Noches! 🌙";
+        saludoElemento.innerText = "Buenas Noches! ";
     }
 }
 
@@ -379,55 +379,35 @@ function renderizarHabitos() {
         const borderColor = yaHecho ? color + '40' : '#e2e8f0';
 
         const tarjetaHTML = `
-            <div class="relative rounded-[20px] overflow-hidden border transition-all duration-300"
-                 style="background:${colorFondo}; border-color:${borderColor};">
-                
-                <!-- Barra de color izquierda -->
-                <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]"
-                     style="background:${color}"></div>
-
-                <div class="flex items-center gap-4 px-5 py-4 pl-6">
-                    
-                    <!-- Emoji -->
-                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                         style="background:${color}18">
-                        <span class="text-2xl">${habito.emoji}</span>
-                    </div>
-
-                    <!-- Info -->
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
-                        <div class="flex items-center gap-2 mt-0.5">
-                            <p class="text-xs font-bold text-slate-400">
-                                ${completados}/${habito.metaSemanal} esta semana
-                            </p>
-                            ${racha > 0 ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
-                        </div>
-                        <!-- Barra de progreso -->
-                        <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-500"
-                                 style="width:${porcentaje}%; background:${color}"></div>
-                        </div>
-                    </div>
-
-                    <!-- Botón check -->
-                    <button onclick="toggleHabitoHoy('${habito.id}')"
-                            class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
-                            style="background:${yaHecho ? color : 'transparent'}; border: 2px solid ${yaHecho ? color : '#e2e8f0'}">
-                        ${yaHecho 
-                            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-                            : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-                        }
-                    </button>
-
-                    <!-- Botón eliminar -->
-                    <button onclick="eliminarHabito('${habito.id}')"
-                            class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-slate-300 hover:text-rose-400 active:scale-90 transition-all text-xs">
-                        ✕
-                    </button>
+    <div class="rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-pointer active:scale-[0.98]"
+         style="background:${colorFondo}; border-color:${borderColor};"
+         onclick="abrirDetalleHabito('${habito.id}')">
+        <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]" style="background:${color}"></div>
+        <div class="flex items-center gap-4 px-5 py-4 pl-6 relative">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:${color}18">
+                <span class="text-2xl">${habito.emoji}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <p class="text-xs font-bold text-slate-400">${completados}/${habito.metaSemanal} esta semana</p>
+                    ${racha > 0 ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
+                </div>
+                <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
                 </div>
             </div>
-        `;
+            <button onclick="event.stopPropagation(); toggleHabitoHoy('${habito.id}')"
+                    class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
+                    style="background:${yaHecho ? color : 'transparent'}; border:2px solid ${yaHecho ? color : '#e2e8f0'}">
+                ${yaHecho
+                    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                }
+            </button>
+        </div>
+    </div>
+`;
         contenedor.innerHTML += tarjetaHTML;
     });
 }
