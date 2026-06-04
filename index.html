@@ -1,5 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
+<style>
+    #slider-meta::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: white;
+        border: 2.5px solid var(--slider-color, #6C63FF);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+    #slider-meta::-webkit-slider-thumb:active {
+        transform: scale(1.15);
+    }
+</style>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -307,8 +323,8 @@
             <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Color</label>
             <div class="flex gap-3 flex-wrap">
                 <button type="button" onclick="seleccionarColor('#6C63FF', this)" data-color="#6C63FF"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all ring-2 ring-offset-2 ring-[#6C63FF]"
-                    style="background:#6C63FF"></button>
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#6C63FF; outline: 2px solid #6C63FF; outline-offset: 3px;"></button>
                 <button type="button" onclick="seleccionarColor('#FF6B6B', this)" data-color="#FF6B6B"
                     class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
                     style="background:#FF6B6B"></button>
@@ -382,17 +398,29 @@
         </div>
 
         <!-- Meta semanal -->
-        <div class="space-y-3">
-            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Meta semanal</label>
-            <div class="flex gap-2">
-                <button onclick="seleccionarMeta(1, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">1d</button>
-                <button onclick="seleccionarMeta(2, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">2d</button>
-                <button onclick="seleccionarMeta(3, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">3d</button>
-                <button onclick="seleccionarMeta(4, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">4d</button>
-                <button onclick="seleccionarMeta(5, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">5d</button>
-                <button onclick="seleccionarMeta(7, this)" class="meta-btn flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 active:scale-95 transition-all">7d</button>
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Meta semanal</label>
+                <span id="meta-valor-label" class="text-sm font-black text-black dark:text-white">1 día / sem</span>
             </div>
-            <p id="meta-descripcion" class="text-xs text-slate-400 font-medium text-center">Selecciona cuántos días por semana</p>
+
+            <div class="relative px-1">
+                <input type="range" id="slider-meta" min="1" max="7" value="1" step="1"
+                oninput="actualizarSliderMeta(this.value)"
+                class="w-full cursor-pointer"
+                style="height:6px; appearance:none; -webkit-appearance:none; border-radius:9999px; outline:none; background: linear-gradient(to right, #6C63FF 0%, #6C63FF 0%, #e2e8f0 0%, #e2e8f0 100%);">
+                <div class="flex justify-between mt-2">
+                    <span class="text-[10px] font-bold text-slate-300">1</span>
+                    <span class="text-[10px] font-bold text-slate-300">2</span>
+                    <span class="text-[10px] font-bold text-slate-300">3</span>
+                    <span class="text-[10px] font-bold text-slate-300">4</span>
+                    <span class="text-[10px] font-bold text-slate-300">5</span>
+                    <span class="text-[10px] font-bold text-slate-300">6</span>
+                    <span class="text-[10px] font-bold text-slate-300">7</span>
+                </div>
+            </div>
+
+            <p id="meta-descripcion" class="text-xs text-slate-400 font-medium text-center">para empezar suave</p>
             <input type="hidden" id="habito-meta" value="1">
         </div>
 

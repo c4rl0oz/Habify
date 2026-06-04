@@ -468,24 +468,21 @@ function abrirModal() {
     document.getElementById('habito-color').value = '#6C63FF';
     document.getElementById('btn-crear-habito').style.background = '#6C63FF';
     document.getElementById('habito-meta').value = '1';
-    document.getElementById('meta-descripcion').innerText = 'Selecciona cuántos días por semana';
-    // Reset botones meta
-    document.querySelectorAll('.meta-btn').forEach(b => {
-        b.style.background = '';
-        b.style.color = '';
-        b.classList.add('bg-slate-100', 'text-slate-500');
-    });
+    // Reset slider meta
+    document.getElementById('slider-meta').value = 1;
+    document.getElementById('habito-meta').value = '1';
+    document.getElementById('meta-valor-label').innerText = '1 día / sem';
+    document.getElementById('meta-descripcion').innerText = 'para empezar suave';
+    document.getElementById('slider-meta').style.background = 'linear-gradient(to right, #6C63FF 0%, #e2e8f0 0%)';
+    document.getElementById('slider-meta').style.setProperty('--slider-color', '#6C63FF');
     // Reset botones color
     document.querySelectorAll('.color-btn').forEach(b => {
-        b.classList.remove('ring-2', 'ring-offset-2');
-        const color = b.dataset.color;
-        b.style.ring = '';
+        b.style.outline = 'none';
     });
     const primerColor = document.querySelector('.color-btn');
     if (primerColor) {
-        primerColor.classList.add('ring-2', 'ring-offset-2');
         primerColor.style.outline = '2px solid #6C63FF';
-        primerColor.style.outlineOffset = '2px';
+        primerColor.style.outlineOffset = '3px';
     }
     // Cargar primera categoría
     mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
@@ -1194,12 +1191,27 @@ function seleccionarColor(color, btn) {
     document.getElementById('habito-color').value = color;
     document.getElementById('btn-crear-habito').style.background = color;
 
+    // Reset todos los botones de color
     document.querySelectorAll('.color-btn').forEach(b => {
         b.style.outline = 'none';
     });
+    // Marcar el seleccionado
     btn.style.outline = `2px solid ${color}`;
     btn.style.outlineOffset = '3px';
+
+    // Actualizar categoría activa
+    const catActiva = document.querySelector('.cat-emoji-btn[style*="white"]');
+    if (catActiva) {
+        catActiva.style.background = color;
+    }
+
+    // Actualizar slider
+    const diasActuales = parseInt(document.getElementById('slider-meta').value);
+    const porcentaje = ((diasActuales - 1) / 6) * 100;
+    document.getElementById('slider-meta').style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
+    document.getElementById('slider-meta').style.setProperty('--slider-color', color);
 }
+
 
 function seleccionarMeta(dias, btn) {
     metaSeleccionada = dias;
@@ -1291,17 +1303,46 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
     });
 
     document.querySelectorAll('.cat-emoji-btn').forEach(b => {
-        b.style.background = '';
-        b.style.color = '';
-        b.classList.remove('text-white');
-        b.classList.add('bg-slate-100', 'dark:bg-white/10', 'text-slate-500');
+        b.style.background = '#f1f5f9';
+        b.style.color = '#64748b';
     });
     if (btnActivo) {
         const color = document.getElementById('habito-color').value || '#6C63FF';
         btnActivo.style.background = color;
         btnActivo.style.color = 'white';
-        btnActivo.classList.remove('bg-slate-100', 'text-slate-500');
     }
+}
+
+function actualizarSliderMeta(valor) {
+    const dias = parseInt(valor);
+    document.getElementById('habito-meta').value = dias;
+    metaSeleccionada = dias;
+
+    const color = document.getElementById('habito-color').value || '#6C63FF';
+    const porcentaje = ((dias - 1) / 6) * 100;
+    const slider = document.getElementById('slider-meta');
+    slider.style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
+    slider.style.setProperty('--slider-color', color);
+    document.getElementById('slider-meta').style.accentColor = color;
+
+    const etiquetas = {
+        1: '1 día / sem — para empezar suave',
+        2: '2 días / sem — ritmo ligero',
+        3: '3 días / sem — equilibrado',
+        4: '4 días / sem — constante',
+        5: '5 días / sem — disciplinado',
+        6: '6 días / sem — muy comprometido',
+        7: '7 días / sem — modo bestia 🔥'
+    };
+
+    const etiquetasCortas = {
+        1: '1 día / sem', 2: '2 días / sem', 3: '3 días / sem',
+        4: '4 días / sem', 5: '5 días / sem', 6: '6 días / sem', 7: '7 días / sem'
+    };
+
+    document.getElementById('meta-valor-label').innerText = etiquetasCortas[dias];
+    document.getElementById('meta-descripcion').innerText = etiquetas[dias].split(' — ')[1];
+    
 }
 
 async function crearHabitoNuevo() {
