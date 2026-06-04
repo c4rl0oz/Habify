@@ -375,8 +375,10 @@ function renderizarHabitos() {
         const racha = calcularRacha(habito);
         const color = habito.color || '#6C63FF';
 
-        const colorFondo = yaHecho ? color + '18' : 'transparent';
-        const borderColor = yaHecho ? color + '40' : '#e2e8f0';
+        const esDark = document.documentElement.classList.contains('dark');
+        const colorFondo = yaHecho ? color + '22' : (esDark ? '#0f0f0f' : 'transparent');
+        const borderColor = yaHecho ? color + '50' : (esDark ? 'rgba(255,255,255,0.10)' : '#e2e8f0');
+        
 
         const tarjetaHTML = `
     <div class="rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-pointer active:scale-[0.98]"
@@ -469,7 +471,8 @@ function abrirModal() {
     document.getElementById('habito-meta').value = '1';
     document.getElementById('meta-valor-label').innerText = '1 día / sem';
     document.getElementById('meta-descripcion').innerText = 'para empezar suave';
-    document.getElementById('slider-meta').style.background = 'linear-gradient(to right, #6C63FF 0%, #e2e8f0 0%)';
+    const esDarkSlider = document.documentElement.classList.contains('dark');
+    document.getElementById('slider-meta').style.background = `linear-gradient(to right, #6C63FF 0%, ${esDarkSlider ? '#2a2a2a' : '#e2e8f0'} 0%)`;
     document.getElementById('slider-meta').style.setProperty('--slider-color', '#6C63FF');
     // Reset botones color
     document.querySelectorAll('.color-btn').forEach(b => {
@@ -531,15 +534,16 @@ function generarCalendarioMensual() {
 
         let clasesEstilo = "";
 
+        const esDark = document.documentElement.classList.contains('dark');
+
         if (esHoy) {
-            clasesEstilo = "text-white rounded-2xl";
+            clasesEstilo = "rounded-2xl";
         } else if (esFuturo) {
-            clasesEstilo = "text-slate-300 cursor-not-allowed";
+            clasesEstilo = "cursor-not-allowed";
         } else if (tieneRegistros) {
-            // Día pasado con hábitos completados → punto verde debajo
-            clasesEstilo = "bg-slate-100 text-slate-800 hover:bg-slate-800 hover:text-white rounded-full relative";
+            clasesEstilo = "rounded-full relative";
         } else {
-            clasesEstilo = "bg-slate-100 text-slate-800 hover:bg-slate-800 hover:text-white rounded-full";
+            clasesEstilo = "rounded-full";
         }
 
         let indicador = '';
@@ -557,13 +561,18 @@ function generarCalendarioMensual() {
         }
 
         cuadrilla.innerHTML += `
-    <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
-            class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center ${clasesEstilo}"
-            style="${esHoy ? 'background:#6C63FF;' : ''}">
-        ${dia}
-        ${indicador}
-    </button>
-`;
+            <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
+                    class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center ${clasesEstilo}"
+                    style="${
+                        esHoy ? 'background:#6C63FF; color:white;' : 
+                        esFuturo ? `color:${esDark ? 'rgba(255,255,255,0.2)' : '#cbd5e1'};` : 
+                        tieneRegistros ? `background:${esDark ? '#2a2a2a' : '#f1f5f9'}; color:${esDark ? 'white' : '#1e293b'};` : 
+                        `background:${esDark ? '#1a1a1a' : '#f1f5f9'}; color:${esDark ? 'rgba(255,255,255,0.35)' : '#475569'};`
+                    }">
+                ${dia}
+                ${indicador}
+            </button>
+        `;
     }
 }
 
@@ -624,6 +633,7 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     }
 
     // Cargar nota guardada de ese día
+    textarea.value = '';
     cargarNotaDia(fechaStr).catch(console.error);
 }
 
@@ -742,7 +752,7 @@ function generarGraficaSemanal() {
                 data: datos,
                 backgroundColor: fechasDias.map(fecha => {
                     const esHoy = fecha === hoyComoTexto();
-                    return esHoy ? '#6C63FF' : '#e2e8f0';
+                    return esHoy ? '#6C63FF' : '#b9b8ba' + '80';
                 }),
                 borderRadius: 8,
                 borderSkipped: false,
@@ -753,6 +763,11 @@ function generarGraficaSemanal() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: '#1a1a1a',
+                    titleColor: '#ffffff',
+                    bodyColor: 'rgba(255,255,255,0.6)',
+                    borderColor: 'rgba(255,255,255,0.12)',
+                    borderWidth: 1,
                     callbacks: {
                         label: ctx => `${ctx.raw} hábito${ctx.raw !== 1 ? 's' : ''}`
                     }
@@ -831,6 +846,11 @@ function generarGraficaMensual() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: '#1a1a1a',
+                    titleColor: '#ffffff',
+                    bodyColor: 'rgba(255,255,255,0.6)',
+                    borderColor: 'rgba(255,255,255,0.12)',
+                    borderWidth: 1,
                     callbacks: {
                         label: ctx => `${ctx.raw} hábito${ctx.raw !== 1 ? 's' : ''}`
                     }
@@ -881,16 +901,17 @@ function generarListaRachas() {
         );
 
         contenedor.innerHTML += `
-            <div class="bg-slate-100/70 p-4 rounded-2xl flex items-center justify-between">
+            <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10">
                 <div class="flex items-center gap-3">
                     <span class="text-xl">${habito.emoji}</span>
                     <div>
-                        <p class="text-sm font-bold text-black">${habito.nombre}</p>
-                        <p class="text-xs text-slate-400 font-medium">${completados}/${habito.metaSemanal} esta semana</p>
+                        <p class="text-sm font-bold text-black dark:text-white">${habito.nombre}</p>
+                        <p class="text-xs text-slate-400 dark:text-white/40 font-medium">${completados}/${habito.metaSemanal} esta semana</p>   
+                        <p class="text-sm font-black text-black dark:text-white">
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-sm font-black text-black">${racha > 0 ? `🔥 ${racha}` : '—'}</p>
+                    <p class="text-sm font-black text-black dark:text-white">${racha > 0 ? `🔥 ${racha}` : '—'}</p>
                     <p class="text-xs text-slate-400 font-medium">${racha > 0 ? 'días' : 'sin racha'}</p>
                 </div>
             </div>
@@ -1280,7 +1301,7 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
     emojis.forEach(({ e, n }) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-2xl active:scale-90 transition-all emoji-cat-btn';
+        btn.className = 'flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-2xl active:scale-90 transition-all emoji-cat-btn';
         btn.innerHTML = e;
         btn.onclick = () => {
             document.getElementById('habito-emoji').value = e;
@@ -1298,9 +1319,12 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
         fila.appendChild(btn);
     });
 
+    const esDark = document.documentElement.classList.contains('dark');
     document.querySelectorAll('.cat-emoji-btn').forEach(b => {
-        b.style.background = '#f1f5f9';
-        b.style.color = '#64748b';
+        b.style.background = esDark ? '#1a1a1a' : '#4d5053';
+        b.style.color = esDark ? 'rgba(255,255,255,0.5)' : '#64748b';
+        b.style.border = 'none';
+        b.style.outline = 'none';
     });
     if (btnActivo) {
         const color = document.getElementById('habito-color').value || '#6C63FF';
@@ -1317,7 +1341,8 @@ function actualizarSliderMeta(valor) {
     const color = document.getElementById('habito-color').value || '#6C63FF';
     const porcentaje = ((dias - 1) / 6) * 100;
     const slider = document.getElementById('slider-meta');
-    slider.style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
+    const esDarkSlider2 = document.documentElement.classList.contains('dark');
+    slider.style.background = `linear-gradient(to right, ${color} ${porcentaje}%, ${esDarkSlider2 ? '#2a2a2a' : '#e2e8f0'} ${porcentaje}%)`;
     slider.style.setProperty('--slider-color', color);
     document.getElementById('slider-meta').style.accentColor = color;
 
@@ -1429,8 +1454,9 @@ function abrirDetalleHabito(id) {
 
     const yaHecho = completadoHoy(habito);
     const btnCheck = document.getElementById('detalle-btn-check');
-    btnCheck.style.background = yaHecho ? '#e2e8f0' : color;
-    btnCheck.style.color = yaHecho ? '#94a3b8' : 'white';
+    const esModoOscuro = document.documentElement.classList.contains('dark');
+    btnCheck.style.background = yaHecho ? (esModoOscuro ? '#ffffff15' : '#e2e8f0') : color;
+    btnCheck.style.color = yaHecho ? (esModoOscuro ? '#ffffff60' : '#94a3b8') : 'white';
     btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
 
     generarMapaActividad(habito);
@@ -1495,7 +1521,8 @@ function generarMapaActividad(habito) {
             celda.style.height = '12px';
             celda.style.borderRadius = '3px';
             celda.style.flexShrink = '0';
-            celda.style.background = esFuturo ? 'transparent' : tieneRegistro ? color : '#e2e8f0';
+            const esDarkMapa = document.documentElement.classList.contains('dark');
+            celda.style.background = esFuturo ? 'transparent' : tieneRegistro ? color : (esDarkMapa ? '#2a2a2a' : '#e2e8f0');
             col.appendChild(celda);
         });
         grid.appendChild(col);
@@ -1525,8 +1552,9 @@ function generarUltimosRegistros(habito) {
         const d = new Date(fecha + 'T00:00:00');
         const esHoy = fecha === hoyComoTexto();
         const etiqueta = esHoy ? 'Hoy' : `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
+        const esDark = document.documentElement.classList.contains('dark');
         contenedor.innerHTML += `
-            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${color}10;">
+            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${document.documentElement.classList.contains('dark') ? '#1a1a1a' : color+'10'}; border:1px solid ${document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.10)' : color+'20'};">
                 <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></div>
                 <p class="text-sm font-bold text-black dark:text-white flex-1">${etiqueta}</p>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>

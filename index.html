@@ -33,7 +33,7 @@
 </head>
 <body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
 
-<div id="pantalla-auth" class="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col justify-center px-8 gap-6">
+<div id="pantalla-auth" class="fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col justify-center px-8 gap-6">
     <div class="space-y-1">
         <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
         <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
@@ -58,12 +58,12 @@
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
             <input type="email" id="login-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
             <input type="password" id="login-password" placeholder="Tu contraseña"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
         <button onclick="loginUsuario()"
@@ -78,17 +78,17 @@
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
             <input type="text" id="registro-nombre" placeholder="Tu nombre"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
             <input type="email" id="registro-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
             <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
         </div>
         <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
         <button onclick="registrarUsuario()"
@@ -102,38 +102,38 @@
 </div>
 
 <!-- PANTALLA DE PERFIL -->
-<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-black z-40 flex flex-col px-6 pt-12 pb-8 hidden">
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col px-6 pt-12 pb-8 hidden">
         <div class="flex justify-between items-center mb-8">
-        <h2 class="text-2xl font-black text-black">Mi Perfil</h2>
-        <button onclick="cerrarPerfil()" class="bg-slate-100 p-2.5 rounded-full active:scale-90 transition-transform">
+        <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
+        <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
     </div>
 
-    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100">
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10">
     <div class="w-20 h-20 rounded-full flex items-center justify-center" style="background:#6C63FF;">            
         <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
         </div>
         <div class="text-center">
-            <p id="perfil-nombre" class="text-xl font-black text-black">Usuario</p>
+            <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
             <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
         </div>
     </div>
 
     <div class="mt-6 space-y-3">
-        <div class="bg-slate-100 dark:bg-white/5 p-4 rounded-2xl flex justify-between items-center">
-            <span class="text-sm font-bold text-slate-600">Hábitos creados</span>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
         <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
         </div>
-        <div class="bg-slate-100 dark:bg-white/5 p-4 rounded-2xl flex justify-between items-center">
-            <span class="text-sm font-bold text-slate-600">Días usando Habify</span>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
             <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
         </div>
-        <div class="bg-slate-100 dark:bg-white/5  p-4 rounded-2xl flex justify-between items-center">
-            <span class="text-sm font-bold text-slate-600">Racha máxima</span>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Racha máxima</span>
             <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
         </div>
-        <div class="bg-slate-100 dark:bg-white/5 p-4 rounded-2xl flex justify-between items-center">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
             <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
             <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
                 class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
@@ -149,7 +149,7 @@
         </button>
     </div>
 </div>
-<header class="bg-white dark:bg-black px-6 pt-8 pb-4 shrink-0">
+<header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
     <div class="flex justify-between items-start mb-4">
         <div>
             <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black dark:text-white leading-tight">Buenos Días!</h1>
@@ -170,11 +170,11 @@
 
         <section id="pantalla-calendario" class="hidden space-y-5">
             <div class="flex justify-between items-center py-2">
-                <button onclick="cambiarMes(-1)" class="bg-slate-100 p-2.5 rounded-full text-black active:scale-90 transition-transform">
+                <button onclick="cambiarMes(-1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <h2 id="calendario-mes-titulo" class="text-xl font-bold text-black">Junio 2026</h2>
-                <button onclick="cambiarMes(1)" class="bg-slate-100 p-2.5 rounded-full text-black active:scale-90 transition-transform">
+                <h2 id="calendario-mes-titulo" class="text-xl font-bold text-black dark:text-white">Junio 2026</h2>
+                <button onclick="cambiarMes(1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
             </div>
@@ -185,17 +185,18 @@
 
             <div id="cuadrilla-mensual" class="grid grid-cols-7 gap-2 text-center"></div>
             
-            <div id="vista-rapida-dia" class="bg-slate-100 dark:bg-white/5 p-4 rounded-3xl border border-slate-200/50 dark:border-white/5 space-y-3 hidden">
+            <div id="vista-rapida-dia" class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-3xl border border-slate-200/50 dark:border-white/5 space-y-3 hidden">
                 <h3 id="resumen-dia-titulo" class="text-xs font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider">Hábitos del día</h3>
                 <div id="lista-habitos-cumplidos" class="flex flex-wrap gap-2"></div>
     
                 <div class="border-t border-slate-200 dark:border-white/10 pt-3 space-y-2">
                     <p class="text-xs font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider">Nota del día</p>
                     <textarea id="nota-dia" rows="3" placeholder="¿Cómo fue tu día? Escribe algo..."
-                        class="w-full px-3 py-2 bg-white dark:bg-black rounded-xl text-sm font-medium text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none resize-none border border-slate-200 dark:border-white/10 transition-all">
+                        class="w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] rounded-xl text-sm font-medium text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none resize-none border border-slate-200 dark:border-white/10 transition-all">
                     </textarea>
                     <button onclick="guardarNotaDia()" 
-                            class="w-full bg-[#333538] dark:bg-white text-white dark:text-black font-bold text-xs py-2.5 rounded-xl active:scale-[0.98] transition-all">
+                            class="w-full text-white font-bold text-xs py-2.5 rounded-xl active:scale-[0.98] transition-all"
+                            style="background:#6C63FF;">
                         Guardar nota
                     </button>
                     <p id="nota-guardada-msg" class="text-xs text-emerald-500 font-bold text-center hidden">
@@ -209,7 +210,7 @@
 <section id="pantalla-estadisticas" class="hidden space-y-5">
     
     <div class="flex justify-between items-center py-2">
-        <h2 class="text-2xl font-black text-black">Estadísticas</h2>
+        <h2 class="text-2xl font-black text-black dark:text-white">Estadísticas</h2>
         <span id="stats-fecha" class="text-xs font-bold text-slate-400"></span>
     </div>
 
@@ -232,12 +233,12 @@
     </div>
 
     <!-- Gráfica semanal con Chart.js -->
-    <div class="bg-slate-100/70 p-5 rounded-[28px] space-y-3">
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
         <canvas id="grafica-semanal" height="160"></canvas>
     </div>
 
-    <div class="bg-slate-100/70 p-5 rounded-[28px] space-y-3">
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
         <canvas id="grafica-mensual" height="160"></canvas>
     </div>
@@ -251,7 +252,7 @@
 </section>
 
     </main>
-<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-black/90 backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm flex justify-between items-center">        
+<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-[#0f0f0f] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm flex justify-between items-center">        
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hoy</p>
         <p id="texto-resumen-hoy" class="text-sm font-bold text-black dark:text-white">Cargando...</p>
 </div>
@@ -259,7 +260,7 @@
 <!-- Barra de navegación inferior -->
 
 <div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
-    <nav class="bg-slate-200/95 dark:bg-white/10 backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-300/30 dark:border-white/10">
+    <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10">
         
         <div class="flex w-2/5 justify-around">
             <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 dark:text-white w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
@@ -296,7 +297,7 @@
 </div>
     
 <!-- PANTALLA DE CREAR HÁBITO -->
-<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-black z-30 flex flex-col">
+<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col">
     
     <!-- Header -->
     <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
@@ -318,7 +319,7 @@
             </div>
             <input type="text" id="habito-nombre" maxlength="30" placeholder="Ej. Meditar, Leer, Correr..."
                 oninput="actualizarContador(this)"
-                class="w-full px-4 py-4 bg-slate-100 dark:bg-white/10 rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all">
+                class="w-full px-4 py-4 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all">
         </div>
 
         <!-- Color de acento -->
@@ -393,7 +394,7 @@
             <div class="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-white/10 rounded-2xl">
                 <span id="emoji-preview" class="text-3xl">🏃</span>
                 <div>
-                    <p class="text-xs font-bold text-slate-400 dark:text-white/40">Icono seleccionado</p>
+                    <p class="text-xs font-bold text-slate-400 dark:bg-[#1a1a1a]">Icono seleccionado</p>
                     <p id="emoji-nombre-preview" class="text-sm font-black text-black dark:text-white">Correr</p>
                 </div>
             </div>
@@ -440,7 +441,7 @@
     </div>
 </div>
 <!-- PANTALLA DE DETALLE DE HÁBITO -->
-<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-black z-30 flex flex-col">
+<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col">
     <div id="detalle-header" class="shrink-0 px-6 pt-12 pb-6">
         <div class="flex items-center justify-between mb-6">
             <button onclick="cerrarDetalleHabito()"
@@ -506,7 +507,7 @@
     </div>
 
     <!-- Botón check -->
-    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/5">
+    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/10">
         <button id="detalle-btn-check" onclick="toggleDesdeDetalle()"
             class="w-full py-4 rounded-2xl font-black text-base text-white active:scale-[0.98] transition-all"
             style="background:#6C63FF;">
