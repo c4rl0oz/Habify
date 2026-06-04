@@ -484,6 +484,10 @@ function abrirModal() {
         primerColor.style.outlineOffset = '3px';
     }
     // Cargar primera categoría
+    document.querySelectorAll('.cat-emoji-btn').forEach(b => {
+        b.style.background = '';
+        b.style.color = '';
+    });
     mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
 }
 
@@ -1028,6 +1032,11 @@ function toggleModoOscuro() {
         html.classList.add('dark');
         localStorage.setItem('habify_modo_oscuro', 'true');
     }
+    
+}
+const catActiva = document.querySelector('.cat-emoji-btn');
+if (catActiva && !document.getElementById('pantalla-crear-habito').classList.contains('hidden')) {
+    mostrarCategoriaEmoji('deporte', catActiva);
 }
 
 // ============================================================
@@ -1320,9 +1329,10 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
     });
 
     const esDark = document.documentElement.classList.contains('dark');
+
     document.querySelectorAll('.cat-emoji-btn').forEach(b => {
-        b.style.background = esDark ? '#1a1a1a' : '#4d5053';
-        b.style.color = esDark ? 'rgba(255,255,255,0.5)' : '#64748b';
+        b.style.background = '';
+        b.style.color = '';
         b.style.border = 'none';
         b.style.outline = 'none';
     });
