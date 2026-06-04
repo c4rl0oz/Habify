@@ -312,7 +312,6 @@ function inicializarApp() {
     actualizarResumenHoy();
     inicializarScrollResumen();
     inicializarTiraDias();
-    setTimeout(() => lucide.createIcons(), 500);
 }
 
 // ============================================================
@@ -483,7 +482,6 @@ function abrirModal() {
     }
     // Cargar primera categoría
     mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
-    lucide.createIcons();
 }
 
 function cerrarModal() {
@@ -1439,7 +1437,6 @@ function abrirDetalleHabito(id) {
     generarUltimosRegistros(habito);
 
     document.getElementById('pantalla-detalle-habito').classList.remove('hidden');
-    lucide.createIcons();
 }
 
 function cerrarDetalleHabito() {
