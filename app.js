@@ -380,7 +380,7 @@ function renderizarHabitos() {
 
         const tarjetaHTML = `
     <div class="rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-pointer active:scale-[0.98]"
-         style="background:${colorFondo}; border-color:${borderColor};"
+        style="background:${colorFondo}; border-color:${borderColor}; position:relative;"
          onclick="abrirDetalleHabito('${habito.id}')">
         <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]" style="background:${color}"></div>
         <div class="flex items-center gap-4 px-5 py-4 pl-6 relative">
