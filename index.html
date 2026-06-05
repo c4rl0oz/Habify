@@ -1,6 +1,36 @@
 <!DOCTYPE html>
 <html lang="es">
 <style>
+    .card-shadow {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .dark .card-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .hero-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.35), 0 2px 8px rgba(108,99,255,0.2);
+    }
+    .dark .hero-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.5), 0 2px 8px rgba(108,99,255,0.3);
+    }
+    .avatar-shadow {
+        box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+    }
+    .dark .avatar-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.6), 0 0 0 1px rgba(108,99,255,0.2);
+    }
+    .float-shadow {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .dark .float-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    .nav-shadow {
+        box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .dark .nav-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 -4px 24px rgba(0,0,0,0.5);
+    }
     #slider-meta::-webkit-slider-thumb {
         -webkit-appearance: none;
         width: 22px;
@@ -110,8 +140,8 @@
         </button>
     </div>
 
-    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10">
-    <div class="w-20 h-20 rounded-full flex items-center justify-center" style="background:#6C63FF; box-shadow: 0 8px 24px rgba(108,99,255,0.4);">            
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mb-2" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
+    <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">            
         <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
         </div>
         <div class="text-center">
@@ -121,20 +151,21 @@
     </div>
 
     <div class="mt-6 space-y-3">
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
         <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
         </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
             <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
         </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/50">Racha máxima</span>
             <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
         </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
+
             <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
                 class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
                 <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
@@ -144,12 +175,13 @@
     
 
     <div class="mt-auto">
-        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
             Cerrar sesión
         </button>
     </div>
 </div>
-<header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0" style="box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);"    <div class="flex justify-between items-start mb-4">
+<header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
+<div class="flex justify-between items-start mb-4">
         <div>
             <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black dark:text-white leading-tight">Buenos Días!</h1>
         </div>
@@ -214,7 +246,7 @@
     </div>
 
     <!-- Tarjeta de productividad global -->
-            <div class="p-5 rounded-[28px] flex justify-between items-center" style="background:#6C63FF; box-shadow: 0 8px 32px rgba(108,99,255,0.35), 0 2px 8px rgba(108,99,255,0.2);">        <div>
+            <div class="p-5 rounded-[28px] flex justify-between items-center hero-shadow" style="background:#6C63FF;">        <div>
             <p class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
             <p id="stats-porcentaje" class="text-4xl font-black text-white">0%</p>
             <p id="stats-descripcion" class="text-xs text-white/60 mt-1">hábitos completados</p>
@@ -232,12 +264,12 @@
     </div>
 
     <!-- Gráfica semanal con Chart.js -->
-    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10">
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
         <canvas id="grafica-semanal" height="160"></canvas>
     </div>
 
-    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10">
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
         <canvas id="grafica-mensual" height="160"></canvas>
     </div>
@@ -251,7 +283,7 @@
 </section>
 
     </main>
-<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-[#0f0f0f] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 flex justify-between items-center" style="box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);">        
+<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-[#0f0f0f] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 flex justify-between items-center float-shadow">        
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hoy</p>
         <p id="texto-resumen-hoy" class="text-sm font-bold text-black dark:text-white">Cargando...</p>
 </div>
@@ -259,7 +291,7 @@
 <!-- Barra de navegación inferior -->
 
 <div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
-    <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10" style="box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);">
+    <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10 nav-shadow">
         
         <div class="flex w-2/5 justify-around">
             <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 dark:text-white w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
