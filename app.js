@@ -382,7 +382,7 @@ function renderizarHabitos() {
 
         const tarjetaHTML = `
     <div class="rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-pointer active:scale-[0.98]"
-        style="background:${colorFondo}; border-color:${borderColor}; position:relative;"
+        style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow: ${yaHecho ? `0 4px 20px ${color}20, 0 1px 4px ${color}15` : '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)'};"
          onclick="abrirDetalleHabito('${habito.id}')">
         <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]" style="background:${color}"></div>
         <div class="flex items-center gap-4 px-5 py-4 pl-6 relative">
@@ -465,6 +465,7 @@ function abrirModal() {
     document.getElementById('emoji-nombre-preview').innerText = 'Correr';
     document.getElementById('habito-color').value = '#6C63FF';
     document.getElementById('btn-crear-habito').style.background = '#6C63FF';
+    document.getElementById('btn-crear-habito').style.boxShadow = '0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25)';
     document.getElementById('habito-meta').value = '1';
     // Reset slider meta
     document.getElementById('slider-meta').value = 1;
@@ -905,7 +906,7 @@ function generarListaRachas() {
         );
 
         contenedor.innerHTML += `
-            <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10">
+            <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10" style="box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
                 <div class="flex items-center gap-3">
                     <span class="text-xl">${habito.emoji}</span>
                     <div>
@@ -1216,6 +1217,7 @@ function seleccionarColor(color, btn) {
     colorSeleccionado = color;
     document.getElementById('habito-color').value = color;
     document.getElementById('btn-crear-habito').style.background = color;
+    document.getElementById('btn-crear-habito').style.boxShadow = `0 6px 24px ${color}40, 0 2px 8px ${color}25`;
 
     // Reset todos los botones de color
     document.querySelectorAll('.color-btn').forEach(b => {
@@ -1236,6 +1238,7 @@ function seleccionarColor(color, btn) {
     const porcentaje = ((diasActuales - 1) / 6) * 100;
     document.getElementById('slider-meta').style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
     document.getElementById('slider-meta').style.setProperty('--slider-color', color);
+
 }
 
 
@@ -1448,7 +1451,9 @@ function abrirDetalleHabito(id) {
     const total = habito.registros.length;
 
     ['stat-card-racha', 'stat-card-max', 'stat-card-total'].forEach(id => {
-        document.getElementById(id).style.background = color + '18';
+        const el = document.getElementById(id);
+        el.style.background = color + '18';
+        el.style.boxShadow = `0 4px 16px ${color}18, 0 1px 4px ${color}10`;
     });
     ['stat-racha-actual', 'stat-racha-max', 'stat-total'].forEach(id => {
         document.getElementById(id).style.color = color;
@@ -1467,6 +1472,7 @@ function abrirDetalleHabito(id) {
     const esModoOscuro = document.documentElement.classList.contains('dark');
     btnCheck.style.background = yaHecho ? (esModoOscuro ? '#ffffff15' : '#e2e8f0') : color;
     btnCheck.style.color = yaHecho ? (esModoOscuro ? '#ffffff60' : '#94a3b8') : 'white';
+    btnCheck.style.boxShadow = yaHecho ? 'none' : `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
     btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
 
     generarMapaActividad(habito);
