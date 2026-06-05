@@ -96,17 +96,16 @@
 </head>
 <body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
 
-<div id="pantalla-auth" class="fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col justify-center px-8 gap-6">
-    <div class="space-y-1">
+<div id="pantalla-auth" class="fixed inset-0 bg-slate-50 dark:bg-[#000000] z-50 flex flex-col px-8 gap-6 pt-[20vh] pb-12">    <div class="space-y-1">
         <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
         <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
     </div>
 
     <!-- Tabs de Login / Registro -->
-    <div class="flex bg-slate-100 dark:bg-white/10 rounded-2xl p-1">
+    <div class="flex bg-slate-100 dark:bg-white/10 rounded-2xl p-1 card-shadow">
         <button id="tab-login" onclick="cambiarTab('login')"
                 class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
-                style="background:#6C63FF; color:white;">
+                style="background:#6C63FF; color:white; box-shadow: 0 4px 12px rgba(108,99,255,0.35);">
             Iniciar sesión
         </button>
         <button id="tab-registro" onclick="cambiarTab('registro')"
@@ -117,51 +116,53 @@
     </div>
 
     <!-- Formulario Login -->
-    <div id="form-login" class="space-y-3">
+    <div id="form-login" class="flex-1 flex flex-col gap-3">
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
             <input type="email" id="login-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
             <input type="password" id="login-password" placeholder="Tu contraseña"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
-        <button onclick="loginUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
-                style="background:#6C63FF;">
-            Entrar →
-        </button>
     </div>
 
     <!-- Formulario Registro -->
-    <div id="form-registro" class="space-y-3 hidden">
+    <div id="form-registro" class="flex-1 flex-col hidden space-y-4">
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
-            <input type="text" id="registro-nombre" placeholder="ej. Ana, Carlos, Pedro"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+            <input type="text" id="registro-nombre" placeholder="ej. Ana, Carlos"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
             <input type="email" id="registro-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
             <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all">
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
-        <button onclick="registrarUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
-                style="background:#6C63FF;">
-            Crear cuenta →
-        </button>
     </div>
 
-    <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
+    <div class="absolute bottom-0 left-0 right-0 px-8 pb-12 flex flex-col gap-3">
+        <button id="btn-login" onclick="loginUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Entrar →
+        </button>
+        <button id="btn-registro" onclick="registrarUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Crear cuenta →
+        </button>
+        <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
+    </div>
 </div>
 
 <!-- PANTALLA DE PERFIL -->

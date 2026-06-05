@@ -5,6 +5,7 @@ let fechaActualCalendario = new Date();
 let graficaSemanal = null;
 let graficaMensual = null;
 let diaSeleccionadoTira = hoyComoTexto();
+let animarCargaInicial = true;
 
 // ============================================================
 // ANIMACIONES DE PANTALLA
@@ -137,17 +138,25 @@ function cambiarTab(tab) {
     if (tab === 'login') {
         tabLogin.style.background = '#6C63FF';
         tabLogin.style.color = 'white';
+        tabLogin.style.boxShadow = '0 4px 12px rgba(108,99,255,0.35)';
         tabRegistro.style.background = 'transparent';
         tabRegistro.style.color = '#94a3b8';
+        tabRegistro.style.boxShadow = 'none';
         formLogin.classList.remove('hidden');
         formRegistro.classList.add('hidden');
+        document.getElementById('btn-login').classList.remove('hidden');
+        document.getElementById('btn-registro').classList.add('hidden');
     } else {
         tabRegistro.style.background = '#6C63FF';
         tabRegistro.style.color = 'white';
+        tabRegistro.style.boxShadow = '0 4px 12px rgba(108,99,255,0.35)';
         tabLogin.style.background = 'transparent';
         tabLogin.style.color = '#94a3b8';
+        tabLogin.style.boxShadow = 'none';
         formRegistro.classList.remove('hidden');
         formLogin.classList.add('hidden');
+        document.getElementById('btn-registro').classList.remove('hidden');
+        document.getElementById('btn-login').classList.add('hidden');
     }
 }
 
@@ -426,7 +435,7 @@ function renderizarHabitos() {
                     <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
                 </div>
             </div>
-            <button onclick="event.stopPropagation(); toggleHabitoHoy('${habito.id}')"
+            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoHoy('${habito.id}')"
                     class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
                     style="background:${yaHecho ? color : 'transparent'}; border:2px solid ${yaHecho ? color : '#e2e8f0'}">
                 ${yaHecho
@@ -437,21 +446,24 @@ function renderizarHabitos() {
         </div>
     </div>
 `;
-        contenedor.innerHTML += tarjetaHTML;
+       contenedor.innerHTML += tarjetaHTML;
     });
 
-    // Fade-in escalonado en cada tarjeta
-    const tarjetas = contenedor.querySelectorAll('.rounded-\\[20px\\]');
-    tarjetas.forEach((t, i) => {
-        t.style.animationDelay = `${i * 60}ms`;
-        t.classList.add('fade-in-up');
-        t.addEventListener('animationend', () => {
-            t.classList.remove('fade-in-up');
-            t.style.opacity = '1';
-            t.style.transform = 'none';
-            t.style.animationDelay = '';
-        }, { once: true });
-    });
+    // Fade-in escalonado solo en carga inicial
+    if (animarCargaInicial) {
+        const tarjetas = contenedor.querySelectorAll('.rounded-\\[20px\\]');
+        tarjetas.forEach((t, i) => {
+            t.style.animationDelay = `${i * 60}ms`;
+            t.classList.add('fade-in-up');
+            t.addEventListener('animationend', () => {
+                t.classList.remove('fade-in-up');
+                t.style.opacity = '1';
+                t.style.transform = 'none';
+                t.style.animationDelay = '';
+            }, { once: true });
+        });
+        animarCargaInicial = false;
+    }
 }
 // ============================================================
 // TOGGLE HÁBITO HOY
@@ -474,13 +486,15 @@ async function toggleHabitoHoy(id) {
 
     renderizarHabitos();
 
-    // Animación check-pop en el botón recién marcado
+    // Animación en el botón de check recién tocado
     setTimeout(() => {
-        const btns = document.querySelectorAll(`[onclick*="${id}"]`);
-        btns.forEach(btn => {
-            btn.classList.add('check-pop');
-            btn.addEventListener('animationend', () => btn.classList.remove('check-pop'), { once: true });
-        });
+        const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
+        if (btnCheck) {
+            btnCheck.classList.add('check-pop');
+            btnCheck.addEventListener('animationend', () => {
+                btnCheck.classList.remove('check-pop');
+            }, { once: true });
+        }
     }, 20);
 }
 
@@ -1081,7 +1095,9 @@ function toggleModoOscuro() {
         html.classList.add('dark');
         localStorage.setItem('habify_modo_oscuro', 'true');
     }
-    
+
+    animarCargaInicial = false;
+    renderizarHabitos();
 }
 const catActiva = document.querySelector('.cat-emoji-btn');
 if (catActiva && !document.getElementById('pantalla-crear-habito').classList.contains('hidden')) {
@@ -1543,7 +1559,27 @@ function cerrarDetalleHabito() {
 async function toggleDesdeDetalle() {
     if (!habitoDetalleActual) return;
     await toggleHabitoHoy(habitoDetalleActual.id);
-    abrirDetalleHabito(habitoDetalleActual.id);
+
+    // Actualizar solo el botón y los stats sin reconstruir la pantalla
+    const habito = habitoDetalleActual;
+    const color = habito.color || '#6C63FF';
+    const yaHecho = completadoHoy(habito);
+    const esModoOscuro = document.documentElement.classList.contains('dark');
+
+    const btnCheck = document.getElementById('detalle-btn-check');
+    btnCheck.style.background = yaHecho ? (esModoOscuro ? '#ffffff15' : '#e2e8f0') : color;
+    btnCheck.style.color = yaHecho ? (esModoOscuro ? '#ffffff60' : '#94a3b8') : 'white';
+    btnCheck.style.boxShadow = yaHecho ? 'none' : `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
+    btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
+
+    // Animación check-pop en el botón
+    btnCheck.classList.add('check-pop');
+    btnCheck.addEventListener('animationend', () => btnCheck.classList.remove('check-pop'), { once: true });
+
+    // Actualizar stats
+    document.getElementById('stat-racha-actual').innerText = calcularRacha(habito);
+    document.getElementById('stat-racha-max').innerText = calcularRachaMaxima(habito);
+    document.getElementById('stat-total').innerText = habito.registros.length;
 }
 
 async function eliminarHabitoDesdeDetalle() {
