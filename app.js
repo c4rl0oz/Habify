@@ -6,6 +6,33 @@ let graficaSemanal = null;
 let graficaMensual = null;
 let diaSeleccionadoTira = hoyComoTexto();
 
+// ============================================================
+// ANIMACIONES DE PANTALLA
+// ============================================================
+function abrirPantallaAnimada(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('hidden');
+    el.style.transform = 'translateY(100%)';
+    requestAnimationFrame(() => {
+        el.classList.add('pantalla-slide-up');
+        el.style.transform = '';
+    });
+    el.addEventListener('animationend', () => {
+        el.classList.remove('pantalla-slide-up');
+    }, { once: true });
+}
+
+function cerrarPantallaAnimada(id, callback) {
+    const el = document.getElementById(id);
+    el.classList.add('pantalla-slide-down');
+    el.addEventListener('animationend', () => {
+        el.classList.remove('pantalla-slide-down');
+        el.classList.add('hidden');
+        el.style.transform = 'translateY(100%)';
+        if (callback) callback();
+    }, { once: true });
+}
+
 function hoyComoTexto() {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -283,11 +310,11 @@ function abrirPerfil() {
     document.getElementById('perfil-racha-max').innerText =
         rachaMaxGlobal > 0 ? `🔥 ${rachaMaxGlobal} días` : '—';
 
-    document.getElementById('pantalla-perfil').classList.remove('hidden');
+    abrirPantallaAnimada('pantalla-perfil');
 }
 
 function cerrarPerfil() {
-    document.getElementById('pantalla-perfil').classList.add('hidden');
+    cerrarPantallaAnimada('pantalla-perfil');
 }
 
 function cerrarSesion() {
@@ -412,8 +439,20 @@ function renderizarHabitos() {
 `;
         contenedor.innerHTML += tarjetaHTML;
     });
-}
 
+    // Fade-in escalonado en cada tarjeta
+    const tarjetas = contenedor.querySelectorAll('.rounded-\\[20px\\]');
+    tarjetas.forEach((t, i) => {
+        t.style.animationDelay = `${i * 60}ms`;
+        t.classList.add('fade-in-up');
+        t.addEventListener('animationend', () => {
+            t.classList.remove('fade-in-up');
+            t.style.opacity = '1';
+            t.style.transform = 'none';
+            t.style.animationDelay = '';
+        }, { once: true });
+    });
+}
 // ============================================================
 // TOGGLE HÁBITO HOY
 // Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
@@ -434,6 +473,15 @@ async function toggleHabitoHoy(id) {
     }
 
     renderizarHabitos();
+
+    // Animación check-pop en el botón recién marcado
+    setTimeout(() => {
+        const btns = document.querySelectorAll(`[onclick*="${id}"]`);
+        btns.forEach(btn => {
+            btn.classList.add('check-pop');
+            btn.addEventListener('animationend', () => btn.classList.remove('check-pop'), { once: true });
+        });
+    }, 20);
 }
 
 // ============================================================
@@ -456,7 +504,7 @@ async function eliminarHabito(id) {
 // ============================================================
 function abrirModal() {
     const pantalla = document.getElementById('pantalla-crear-habito');
-    pantalla.classList.remove('hidden');
+    abrirPantallaAnimada('pantalla-crear-habito');
     // Reset estado
     document.getElementById('habito-nombre').value = '';
     document.getElementById('contador-caracteres').innerText = '0/30';
@@ -493,7 +541,7 @@ function abrirModal() {
 }
 
 function cerrarModal() {
-    document.getElementById('pantalla-crear-habito').classList.add('hidden');
+    cerrarPantallaAnimada('pantalla-crear-habito');
 }
 
 // ============================================================
@@ -1162,7 +1210,12 @@ function inicializarTiraDias() {
             <div style="width:4px; height:4px; border-radius:50%; background:${tieneActividad ? (esSeleccionado ? 'rgba(255,255,255,0.7)' : '#6C63FF') : 'transparent'}"></div>
         `;
 
-        btn.onclick = () => seleccionarDiaTira(fechaStr);
+btn.onclick = () => {
+            btn.style.transition = 'transform 0.2s cubic-bezier(0.32,0.72,0,1)';
+            btn.style.transform = 'scale(0.88)';
+            setTimeout(() => { btn.style.transform = ''; }, 200);
+            seleccionarDiaTira(fechaStr);
+        };
         contenedor.appendChild(btn);
     });
 
@@ -1478,12 +1531,13 @@ function abrirDetalleHabito(id) {
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
 
-    document.getElementById('pantalla-detalle-habito').classList.remove('hidden');
+    abrirPantallaAnimada('pantalla-detalle-habito');
 }
 
 function cerrarDetalleHabito() {
-    document.getElementById('pantalla-detalle-habito').classList.add('hidden');
-    habitoDetalleActual = null;
+    cerrarPantallaAnimada('pantalla-detalle-habito', () => {
+        habitoDetalleActual = null;
+    });
 }
 
 async function toggleDesdeDetalle() {

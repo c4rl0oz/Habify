@@ -31,6 +31,39 @@
     .dark .nav-shadow {
         box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 -4px 24px rgba(0,0,0,0.5);
     }
+
+    /* ANIMACIONES */
+    .pantalla-slide-up {
+        animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    .pantalla-slide-down {
+        animation: slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0.6; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes slideDown {
+        from { transform: translateY(0);    opacity: 1; }
+        to   { transform: translateY(100%); opacity: 0.6; }
+    }
+    .fade-in-up {
+        opacity: 0;
+        transform: translateY(16px);
+        animation: fadeInUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes checkPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.18); }
+        70%  { transform: scale(0.93); }
+        100% { transform: scale(1); }
+    }
+    .check-pop {
+        animation: checkPop 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    }
     #slider-meta::-webkit-slider-thumb {
         -webkit-appearance: none;
         width: 22px;
@@ -132,7 +165,7 @@
 </div>
 
 <!-- PANTALLA DE PERFIL -->
-<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col px-6 pt-12 pb-8 hidden">
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col px-6 pt-12 pb-8 hidden" style="transform: translateY(100%);">
         <div class="flex justify-between items-center mb-8">
         <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
         <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
@@ -328,7 +361,7 @@
 </div>
     
 <!-- PANTALLA DE CREAR HÁBITO -->
-<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col">
+<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col" style="transform: translateY(100%);">
     
     <!-- Header -->
     <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
@@ -473,7 +506,7 @@
     </div>
 </div>
 <!-- PANTALLA DE DETALLE DE HÁBITO -->
-<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col">
+<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col" style="transform: translateY(100%);">
     <div id="detalle-header" class="shrink-0 px-6 pt-12 pb-6">
         <div class="flex items-center justify-between mb-6">
             <button onclick="cerrarDetalleHabito()"
