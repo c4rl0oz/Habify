@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<style>
+    .card-shadow {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .dark .card-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .hero-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.35), 0 2px 8px rgba(108,99,255,0.2);
+    }
+    .dark .hero-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.5), 0 2px 8px rgba(108,99,255,0.3);
+    }
+    .avatar-shadow {
+        box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+    }
+    .dark .avatar-shadow {
+        box-shadow: 0 8px 32px rgba(108,99,255,0.6), 0 0 0 1px rgba(108,99,255,0.2);
+    }
+    .float-shadow {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .dark .float-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    .nav-shadow {
+        box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .dark .nav-shadow {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 -4px 24px rgba(0,0,0,0.5);
+    }
+
+    /* ANIMACIONES */
+    .pantalla-slide-up {
+        animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    .pantalla-slide-down {
+        animation: slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0.6; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes slideDown {
+        from { transform: translateY(0);    opacity: 1; }
+        to   { transform: translateY(100%); opacity: 0.6; }
+    }
+    .fade-in-up {
+        opacity: 0;
+        transform: translateY(16px);
+        animation: fadeInUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes checkPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.18); }
+        70%  { transform: scale(0.93); }
+        100% { transform: scale(1); }
+    }
+    .check-pop {
+        animation: checkPop 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .drag-over {
+        border-color: rgba(108,99,255,0.5) !important;
+        box-shadow: 0 0 0 2px rgba(108,99,255,0.3) !important;
+        transform: scale(1.01);
+    }
+    #slider-meta::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: white;
+        border: 2.5px solid var(--slider-color, #6C63FF);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+    #slider-meta::-webkit-slider-thumb:active {
+        transform: scale(1.15);
+    }
+</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Habify v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="supabase.js"></script>
+</head>
+<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
+
+<div id="pantalla-auth" class="fixed inset-0 bg-slate-50 dark:bg-[#000000] z-50 flex flex-col px-8 gap-6 pt-[20vh] pb-12">    <div class="space-y-1">
+        <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
+        <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
+    </div>
+
+    <!-- Tabs de Login / Registro -->
+    <div class="flex bg-slate-100 dark:bg-white/10 rounded-2xl p-1 card-shadow">
+        <button id="tab-login" onclick="cambiarTab('login')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                style="background:#6C63FF; color:white; box-shadow: 0 4px 12px rgba(108,99,255,0.35);">
+            Iniciar sesión
+        </button>
+        <button id="tab-registro" onclick="cambiarTab('registro')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                style="background:transparent; color:#94a3b8;">
+            Registrarse
+        </button>
+    </div>
+
+    <!-- Formulario Login -->
+    <div id="form-login" class="flex-1 flex flex-col gap-3">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="login-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="login-password" placeholder="Tu contraseña"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
+    </div>
+
+    <!-- Formulario Registro -->
+    <div id="form-registro" class="flex-1 flex-col hidden space-y-4">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
+            <input type="text" id="registro-nombre" placeholder="ej. Ana, Carlos"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="registro-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
+    </div>
+
+    <div class="absolute bottom-0 left-0 right-0 px-8 pb-12 flex flex-col gap-3">
+        <button id="btn-login" onclick="loginUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Entrar →
+        </button>
+        <button id="btn-registro" onclick="registrarUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Crear cuenta →
+        </button>
+        <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
+    </div>
+</div>
+
+<!-- PANTALLA DE PERFIL -->
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col px-6 pt-12 pb-8 hidden" style="transform: translateY(100%);">
+        <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
+        <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mb-2" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
+    <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">            
+        <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+        </div>
+        <div class="text-center">
+            <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
+            <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
+        </div>
+    </div>
+
+    <div class="mt-6 space-y-3">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
+        <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
+            <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Racha máxima</span>
+            <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
+
+            <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
+                class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
+                <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
+            </button>
+        </div>
+    </div>
+    
+
+    <div class="mt-auto">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
+            Cerrar sesión
+        </button>
+    </div>
+</div>
+<header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
+<div class="flex justify-between items-start mb-4">
+        <div>
+            <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black dark:text-white leading-tight">Buenos Días!</h1>
+        </div>
+    </div>
+
+    <!-- Tira de días horizontal -->
+    <div id="tira-dias" class="flex gap-2 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"></div>
+    </div>
+</header>
+
+    <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
+        
+        <section id="pantalla-inicio" class="space-y-4">
+            <div id="contenedor-widgets" class="grid grid-cols-2 gap-4"></div>
+
+        </section>
+
+        <section id="pantalla-calendario" class="hidden space-y-5">
+            <div class="flex justify-between items-center py-2">
+                <button onclick="cambiarMes(-1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <h2 id="calendario-mes-titulo" class="text-xl font-bold text-black dark:text-white">Junio 2026</h2>
+                <button onclick="cambiarMes(1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-7 text-center text-xs font-bold text-slate-400">
+                <span>D</span><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span>
+            </div>
+
+            <div id="cuadrilla-mensual" class="grid grid-cols-7 gap-2 text-center"></div>
+            
+            <div id="vista-rapida-dia" class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-3xl border border-slate-200/50 dark:border-white/5 space-y-3 hidden">
+                <h3 id="resumen-dia-titulo" class="text-xs font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider">Hábitos del día</h3>
+                <div id="lista-habitos-cumplidos" class="flex flex-wrap gap-2"></div>
+    
+                <div class="border-t border-slate-200 dark:border-white/10 pt-3 space-y-2">
+                    <p class="text-xs font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider">Nota del día</p>
+                    <textarea id="nota-dia" rows="3" placeholder="¿Cómo fue tu día? Escribe algo..."
+                        class="w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] rounded-xl text-sm font-medium text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none resize-none border border-slate-200 dark:border-white/10 transition-all">
+                    </textarea>
+                    <button onclick="guardarNotaDia()" 
+                            class="w-full text-white font-bold text-xs py-2.5 rounded-xl active:scale-[0.98] transition-all"
+                            style="background:#6C63FF;">
+                        Guardar nota
+                    </button>
+                    <p id="nota-guardada-msg" class="text-xs text-emerald-500 font-bold text-center hidden">
+                        ✓ Nota guardada
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PANTALLA DE ESTADÍSTICAS -->
+<section id="pantalla-estadisticas" class="hidden space-y-5">
+    
+    <div class="flex justify-between items-center py-2">
+        <h2 class="text-2xl font-black text-black dark:text-white">Estadísticas</h2>
+        <span id="stats-fecha" class="text-xs font-bold text-slate-400"></span>
+    </div>
+
+    <!-- Tarjeta de productividad global -->
+            <div class="p-5 rounded-[28px] flex justify-between items-center hero-shadow" style="background:#6C63FF;">        <div>
+            <p class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
+            <p id="stats-porcentaje" class="text-4xl font-black text-white">0%</p>
+            <p id="stats-descripcion" class="text-xs text-white/60 mt-1">hábitos completados</p>
+        </div>
+        <div class="relative w-16 h-16 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-white/20" stroke-width="3" stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path id="stats-anillo" class="text-white transition-all duration-700" 
+                      stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" 
+                      stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Gráfica semanal con Chart.js -->
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
+        <canvas id="grafica-semanal" height="160"></canvas>
+    </div>
+
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
+        <canvas id="grafica-mensual" height="160"></canvas>
+    </div>
+
+    <!-- Rachas por hábito -->
+    <div class="space-y-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Rachas activas</p>
+        <div id="lista-rachas" class="space-y-2"></div>
+    </div>
+
+</section>
+
+    </main>
+<div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-white/90 dark:bg-[#0f0f0f] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-100 dark:border-white/10 flex justify-between items-center float-shadow">        
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hoy</p>
+        <p id="texto-resumen-hoy" class="text-sm font-bold text-black dark:text-white">Cargando...</p>
+</div>
+
+<!-- Barra de navegación inferior -->
+
+<div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
+    <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10 nav-shadow">
+        
+        <div class="flex w-2/5 justify-around">
+            <button onclick="irAPantalla('inicio')" class="flex flex-col items-center justify-center text-slate-800 dark:text-white w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button onclick="irAPantalla('calendario')" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
+            </button>
+        </div>
+
+        <div class="w-1/5 flex justify-center">
+            <button onclick="abrirModal()" class="text-white w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-transform" style="background:#6C63FF; box-shadow: 0 4px 16px rgba(108,99,255,0.45), 0 1px 4px rgba(108,99,255,0.3);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex w-2/5 justify-around">
+            <button onclick="irAPantalla('estadisticas')" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </button>
+
+            <button onclick="abrirPerfil()" class="flex flex-col items-center justify-center text-slate-500 dark:text-white/50 w-12 h-12 rounded-full active:bg-slate-300/50 transition-colors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+            </button>
+        </div>
+
+    </nav>
+</div>
+    
+<!-- PANTALLA DE CREAR HÁBITO -->
+<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col" style="transform: translateY(100%);">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
+        <button onclick="cerrarModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 active:scale-90 transition-transform">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h2 class="text-base font-black text-black dark:text-white">Nuevo hábito</h2>
+        <div class="w-10"></div>
+    </div>
+
+    <!-- Contenido scrollable -->
+    <div class="flex-1 overflow-y-auto px-6 pb-8 space-y-7">
+
+        <!-- Nombre -->
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nombre del hábito</label>
+                <span id="contador-caracteres" class="text-[11px] font-bold text-slate-300">0/30</span>
+            </div>
+            <input type="text" id="habito-nombre" maxlength="30" placeholder="Ej. Meditar, Leer, Correr..."
+                oninput="actualizarContador(this)"
+                class="w-full px-4 py-4 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all">
+        </div>
+
+        <!-- Color de acento -->
+        <div class="space-y-3">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Color</label>
+            <div class="flex gap-3 flex-wrap">
+                <button type="button" onclick="seleccionarColor('#6C63FF', this)" data-color="#6C63FF"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#6C63FF; outline: 2px solid #6C63FF; outline-offset: 3px;"></button>
+                <button type="button" onclick="seleccionarColor('#FF6B6B', this)" data-color="#FF6B6B"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#FF6B6B"></button>
+                <button type="button" onclick="seleccionarColor('#00C9A7', this)" data-color="#00C9A7"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#00C9A7"></button>
+                <button type="button" onclick="seleccionarColor('#FF9F43', this)" data-color="#FF9F43"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#FF9F43"></button>
+                <button type="button" onclick="seleccionarColor('#4FC3F7', this)" data-color="#4FC3F7"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#4FC3F7"></button>
+                <button type="button" onclick="seleccionarColor('#F368E0', this)" data-color="#F368E0"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#F368E0"></button>
+                <button type="button" onclick="seleccionarColor('#A8E063', this)" data-color="#A8E063"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#A8E063"></button>
+                <button type="button" onclick="seleccionarColor('#778CA3', this)" data-color="#778CA3"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    style="background:#778CA3"></button>
+            </div>
+            <input type="hidden" id="habito-color" value="#6C63FF">
+        </div>
+
+        <!-- Emoji por categorías -->
+        <div class="space-y-3">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Icono</label>
+            
+            <!-- Categorías -->
+            <div class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+
+                <button onclick="mostrarCategoriaEmoji('deporte', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Deporte
+                </button>
+                <button onclick="mostrarCategoriaEmoji('salud', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Salud
+                </button>
+                <button onclick="mostrarCategoriaEmoji('mente', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Mente
+                </button>
+                <button onclick="mostrarCategoriaEmoji('finanzas', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Finanzas
+                </button>
+                <button onclick="mostrarCategoriaEmoji('creatividad', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Creatividad
+                </button>
+                <button onclick="mostrarCategoriaEmoji('hogar', this)"
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    Hogar
+                </button>
+            </div>
+
+            <!-- Fila de emojis -->
+            <div id="fila-emojis" class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] py-1">
+            </div>
+
+            <!-- Emoji seleccionado preview -->
+            <div class="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-white/10 rounded-2xl">
+                <span id="emoji-preview" class="text-3xl">🏃</span>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 dark:bg-[#1a1a1a]">Icono seleccionado</p>
+                    <p id="emoji-nombre-preview" class="text-sm font-black text-black dark:text-white">Correr</p>
+                </div>
+            </div>
+            <input type="hidden" id="habito-emoji" value="🏃">
+        </div>
+
+        <!-- Meta semanal -->
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Meta semanal</label>
+                <span id="meta-valor-label" class="text-sm font-black text-black dark:text-white">1 día / sem</span>
+            </div>
+
+            <div class="relative px-1">
+                <input type="range" id="slider-meta" min="1" max="7" value="1" step="1"
+                oninput="actualizarSliderMeta(this.value)"
+                class="w-full cursor-pointer"
+                style="height:6px; appearance:none; -webkit-appearance:none; border-radius:9999px; outline:none; background: linear-gradient(to right, #6C63FF 0%, #6C63FF 0%, #e2e8f0 0%, #e2e8f0 100%);">
+                <div class="flex justify-between mt-2">
+                    <span class="text-[10px] font-bold text-slate-300">1</span>
+                    <span class="text-[10px] font-bold text-slate-300">2</span>
+                    <span class="text-[10px] font-bold text-slate-300">3</span>
+                    <span class="text-[10px] font-bold text-slate-300">4</span>
+                    <span class="text-[10px] font-bold text-slate-300">5</span>
+                    <span class="text-[10px] font-bold text-slate-300">6</span>
+                    <span class="text-[10px] font-bold text-slate-300">7</span>
+                </div>
+            </div>
+
+            <p id="meta-descripcion" class="text-xs text-slate-400 font-medium text-center">para empezar suave</p>
+            <input type="hidden" id="habito-meta" value="1">
+        </div>
+
+    </div>
+<!-- Recordatorio -->
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl overflow-hidden card-shadow">
+            <div class="flex justify-between items-center px-4 py-3.5">
+                <div>
+                    <p class="text-sm font-bold text-black dark:text-white">Recordatorio diario</p>
+                    <p class="text-xs text-slate-400 font-medium mt-0.5">Aviso si no has completado el hábito</p>
+                </div>
+                <button type="button" id="toggle-recordatorio" onclick="toggleRecordatorio()"
+                    class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white/20 relative transition-all flex-shrink-0">
+                    <span id="toggle-recordatorio-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-200"></span>
+                </button>
+            </div>
+            <div id="recordatorio-hora-container" class="hidden border-t border-slate-200 dark:border-white/10 px-4 py-3">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">¿A qué hora?</p>
+                <div class="flex items-center justify-center gap-3">
+                    <div class="flex flex-col items-center gap-1">
+                        <button type="button" onclick="cambiarHora(1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <div class="w-16 h-14 bg-white dark:bg-[#2a2a2a] rounded-2xl flex items-center justify-center card-shadow">
+                            <span id="recordatorio-hora-display" class="text-2xl font-black text-black dark:text-white">08</span>
+                        </div>
+                        <button type="button" onclick="cambiarHora(-1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                    <span class="text-2xl font-black text-black dark:text-white mb-1">:</span>
+                    <div class="flex flex-col items-center gap-1">
+                        <button type="button" onclick="cambiarMinuto(1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <div class="w-16 h-14 bg-white dark:bg-[#2a2a2a] rounded-2xl flex items-center justify-center card-shadow">
+                            <span id="recordatorio-minuto-display" class="text-2xl font-black text-black dark:text-white">00</span>
+                        </div>
+                        <button type="button" onclick="cambiarMinuto(-1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" id="recordatorio-hora" value="08:00">
+            </div>
+        </div>
+    <!-- Botón crear fijo al fondo -->
+    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/5">
+        <button onclick="crearHabitoNuevo()"
+            id="btn-crear-habito"
+            class="w-full py-4 rounded-2xl text-white font-black text-base active:scale-[0.98] transition-all"
+            style="background: #6C63FF;">
+            Crear hábito →
+        </button>
+    </div>
+</div>
+<!-- PANTALLA DE DETALLE DE HÁBITO -->
+<div id="pantalla-detalle-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col" style="transform: translateY(100%);">
+    <div id="detalle-header" class="shrink-0 px-6 pt-12 pb-6">
+        <div class="flex items-center justify-between mb-6">
+            <button onclick="cerrarDetalleHabito()"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <div class="flex gap-2">
+                <button onclick="abrirEditarHabito()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onclick="eliminarHabitoDesdeDetalle()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="detalle-emoji-container" class="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl">
+                <span id="detalle-emoji">🏃</span>
+            </div>
+            <div>
+                <h1 id="detalle-nombre" class="text-2xl font-black text-black dark:text-white">Hábito</h1>
+                <p id="detalle-meta" class="text-sm font-bold text-slate-500 dark:text-white/50">Meta: 0 días / sem</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3">
+            <div id="stat-card-racha" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-racha-actual" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Racha actual</p>
+            </div>
+            <div id="stat-card-max" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-racha-max" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Mejor racha</p>
+            </div>
+            <div id="stat-card-total" class="rounded-2xl p-4 text-center space-y-1">
+                <p id="stat-total" class="text-2xl font-black">0</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Total días</p>
+            </div>
+        </div>
+
+        <!-- Mapa de actividad -->
+        <div class="space-y-3">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actividad — últimos 3 meses</p>
+            <div id="mapa-actividad" class="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+                <div id="grid-actividad" class="flex gap-1"></div>
+            </div>
+            <div class="flex items-center gap-2 justify-end">
+                <span class="text-[10px] text-slate-300 font-medium">Menos</span>
+                <div class="w-3 h-3 rounded-sm bg-slate-100"></div>
+                <div id="actividad-color-1" class="w-3 h-3 rounded-sm" style="opacity:0.3; background:#6C63FF"></div>
+                <div id="actividad-color-2" class="w-3 h-3 rounded-sm" style="opacity:0.6; background:#6C63FF"></div>
+                <div id="actividad-color-3" class="w-3 h-3 rounded-sm" style="background:#6C63FF"></div>
+                <span class="text-[10px] text-slate-300 font-medium">Más</span>
+            </div>
+        </div>
+
+        <!-- Últimos registros -->
+        <div class="space-y-3">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Últimos registros</p>
+            <div id="lista-ultimos-registros" class="space-y-2"></div>
+        </div>
+
+    </div>
+
+    <!-- Botón check -->
+    <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/10">
+        <button id="detalle-btn-check" onclick="toggleDesdeDetalle()"
+            class="w-full py-4 rounded-2xl font-black text-base text-white active:scale-[0.98] transition-all"
+            style="background:#6C63FF;">
+            Marcar como hecho hoy ✓
+        </button>
+    </div>
+</div>
+<script src="app.js"></script>
+    </script>
+</body>
+</html>
