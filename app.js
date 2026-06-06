@@ -319,6 +319,7 @@ async function cargarDatosUsuario() {
         actualizarResumenHoy();
         inicializarTiraDias();
         programarRecordatorios();
+        verificarNuevosLogros();
     } catch (e) {
         mostrarError('Revisa tu conexión.');
     }
@@ -361,6 +362,42 @@ function abrirPerfil() {
     }, 0);
     document.getElementById('perfil-racha-max').innerText =
         rachaMaxGlobal > 0 ? `🔥 ${rachaMaxGlobal} días` : '—';
+
+    // Renderizar logros
+    const contenedorLogros = document.getElementById('perfil-logros');
+    if (contenedorLogros) {
+        const desbloqueados = obtenerLogrosDesbloqueados();
+        const idsDesbloqueados = desbloqueados.map(l => l.id);
+        contenedorLogros.innerHTML = '';
+
+        LOGROS.forEach(logro => {
+            const desbloqueado = idsDesbloqueados.includes(logro.id);
+            const div = document.createElement('div');
+            div.style.cssText = `
+                display:flex; align-items:center; gap:12px; padding:12px 16px;
+                border-radius:16px; border:1px solid;
+                background:${desbloqueado ? 'rgba(108,99,255,0.08)' : 'transparent'};
+                border-color:${desbloqueado ? 'rgba(108,99,255,0.2)' : 'rgba(0,0,0,0.06)'};
+                opacity:${desbloqueado ? '1' : '0.4'};
+            `;
+            div.innerHTML = `
+                <span style="font-size:24px; flex-shrink:0;">${logro.emoji}</span>
+                <div style="flex:1; min-width:0;">
+                    <p style="font-size:13px; font-weight:700;">${logro.nombre}</p>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:1px;">${logro.descripcion}</p>
+                </div>
+                ${desbloqueado ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C63FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ''}
+            `;
+            contenedorLogros.appendChild(div);
+        });
+    }
+
+    // Contador de logros
+    const desbloqueados = obtenerLogrosDesbloqueados();
+    const contadorEl = document.getElementById('perfil-logros-count');
+    if (contadorEl) {
+        contadorEl.innerText = `${desbloqueados.length} de ${LOGROS.length} desbloqueados`;
+    }
 
     abrirPantallaAnimada('pantalla-perfil');
 }
@@ -574,6 +611,7 @@ async function toggleHabitoDia(habitoId, fechaStr) {
     actualizarResumenHoy();
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
+    verificarNuevosLogros();
 }
 
 // ============================================================
@@ -2152,6 +2190,242 @@ function generarUltimosRegistros(habito) {
             </div>
         `;
     });
+}
+
+// ============================================================
+// LOGROS / BADGES
+// ============================================================
+
+const LOGROS = [
+    {
+        id: 'primer_paso',
+        emoji: '🔥',
+        nombre: 'Primer paso',
+        descripcion: 'Completa un hábito por primera vez',
+        check: () => misHabitos.some(h => h.registros.length > 0)
+    },
+    {
+        id: 'en_racha',
+        emoji: '🔥',
+        nombre: 'En racha',
+        descripcion: '7 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 7)
+    },
+    {
+        id: 'imparable',
+        emoji: '🔥',
+        nombre: 'Imparable',
+        descripcion: '30 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 30)
+    },
+    {
+        id: 'leyenda',
+        emoji: '🔥',
+        nombre: 'Leyenda',
+        descripcion: '100 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 100)
+    },
+    {
+        id: 'semana_perfecta',
+        emoji: '⭐',
+        nombre: 'Semana perfecta',
+        descripcion: 'Completa todos tus hábitos 7 días seguidos',
+        check: () => {
+            if (misHabitos.length === 0) return false;
+            const hoy = new Date();
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(hoy);
+                d.setDate(hoy.getDate() - i);
+                const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
+                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
+                if (habitosDelDia.length === 0) return false;
+                const todosCompletados = habitosDelDia.every(h => h.registros.includes(fecha));
+                if (!todosCompletados) return false;
+            }
+            return true;
+        }
+    },
+    {
+        id: 'mes_solido',
+        emoji: '⭐',
+        nombre: 'Mes sólido',
+        descripcion: 'Al menos 80% de tus hábitos completados por 30 días',
+        check: () => {
+            if (misHabitos.length === 0) return false;
+            const hoy = new Date();
+            let diasCumplidos = 0;
+            for (let i = 0; i < 30; i++) {
+                const d = new Date(hoy);
+                d.setDate(hoy.getDate() - i);
+                const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
+                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
+                if (habitosDelDia.length === 0) continue;
+                const completados = habitosDelDia.filter(h => h.registros.includes(fecha)).length;
+                if (completados / habitosDelDia.length >= 0.8) diasCumplidos++;
+            }
+            return diasCumplidos >= 30;
+        }
+    },
+    {
+        id: 'coleccionista',
+        emoji: '💎',
+        nombre: 'Coleccionista',
+        descripcion: 'Crea 5 hábitos',
+        check: () => misHabitos.length >= 5
+    },
+    {
+        id: 'centenario',
+        emoji: '💎',
+        nombre: 'Centenario',
+        descripcion: 'Registra 100 completados en total',
+        check: () => misHabitos.reduce((sum, h) => sum + h.registros.length, 0) >= 100
+    },
+    {
+        id: 'veterano',
+        emoji: '💎',
+        nombre: 'Veterano',
+        descripcion: 'Registra 500 completados en total',
+        check: () => misHabitos.reduce((sum, h) => sum + h.registros.length, 0) >= 500
+    },
+    {
+        id: 'bienvenido',
+        emoji: '🌱',
+        nombre: 'Bienvenido',
+        descripcion: 'Primer día usando Habify',
+        check: () => true
+    },
+    {
+        id: 'un_mes',
+        emoji: '🌱',
+        nombre: 'Un mes contigo',
+        descripcion: '30 días desde tu registro',
+        check: () => {
+            if (!usuarioActual?.fecha_registro) return false;
+            const fechaRegistro = new Date(usuarioActual.fecha_registro + 'T00:00:00');
+            const dias = Math.floor((new Date() - fechaRegistro) / 86400000);
+            return dias >= 30;
+        }
+    },
+    {
+        id: 'habify_pro',
+        emoji: '🌱',
+        nombre: 'Habify Pro',
+        descripcion: '90 días desde tu registro',
+        check: () => {
+            if (!usuarioActual?.fecha_registro) return false;
+            const fechaRegistro = new Date(usuarioActual.fecha_registro + 'T00:00:00');
+            const dias = Math.floor((new Date() - fechaRegistro) / 86400000);
+            return dias >= 90;
+        }
+    }
+];
+
+function abrirLogros() {
+    const desbloqueados = obtenerLogrosDesbloqueados();
+    const idsDesbloqueados = desbloqueados.map(l => l.id);
+
+    const resumen = document.getElementById('logros-resumen');
+    if (resumen) resumen.innerText = `${desbloqueados.length} de ${LOGROS.length} desbloqueados`;
+
+    const lista = document.getElementById('lista-logros');
+    lista.innerHTML = '';
+
+    // Primero los desbloqueados, luego los bloqueados
+    const ordenados = [...LOGROS].sort((a, b) => {
+        const aDesbloqueado = idsDesbloqueados.includes(a.id);
+        const bDesbloqueado = idsDesbloqueados.includes(b.id);
+        if (aDesbloqueado && !bDesbloqueado) return -1;
+        if (!aDesbloqueado && bDesbloqueado) return 1;
+        return 0;
+    });
+
+    ordenados.forEach(logro => {
+        const desbloqueado = idsDesbloqueados.includes(logro.id);
+        const esDark = document.documentElement.classList.contains('dark');
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-3 p-4 rounded-2xl border transition-all card-shadow';
+        div.style.background = desbloqueado
+            ? (esDark ? 'rgba(108,99,255,0.12)' : 'rgba(108,99,255,0.06)')
+            : (esDark ? '#1a1a1a' : '#f8fafc');
+        div.style.borderColor = desbloqueado
+            ? 'rgba(108,99,255,0.25)'
+            : (esDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0');
+        div.style.opacity = desbloqueado ? '1' : '0.45';
+
+        div.innerHTML = `
+            <span style="font-size:28px; flex-shrink:0;">${logro.emoji}</span>
+            <div style="flex:1; min-width:0;">
+                <p class="text-sm font-bold text-black dark:text-white">${logro.nombre}</p>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">${logro.descripcion}</p>
+            </div>
+            ${desbloqueado
+                ? `<div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:#6C63FF">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                   </div>`
+                : `<div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-200 dark:bg-white/10">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                   </div>`
+            }
+        `;
+        lista.appendChild(div);
+    });
+
+    abrirPantallaAnimada('pantalla-logros');
+}
+
+function cerrarLogros() {
+    cerrarPantallaAnimada('pantalla-logros');
+}
+function obtenerLogrosDesbloqueados() {
+    return LOGROS.filter(l => {
+        try { return l.check(); } catch { return false; }
+    });
+}
+
+function verificarNuevosLogros() {
+    const yaVistos = JSON.parse(localStorage.getItem('habify_logros_vistos') || '[]');
+    const desbloqueados = obtenerLogrosDesbloqueados();
+
+    desbloqueados.forEach(logro => {
+        if (!yaVistos.includes(logro.id)) {
+            yaVistos.push(logro.id);
+            localStorage.setItem('habify_logros_vistos', JSON.stringify(yaVistos));
+            mostrarNotificacionLogro(logro);
+        }
+    });
+}
+
+function mostrarNotificacionLogro(logro) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 20px; left: 16px; right: 16px; z-index: 300;
+        background: #6C63FF; color: white; border-radius: 20px;
+        padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 8px 32px rgba(108,99,255,0.45);
+        animation: slideDown 0.35s cubic-bezier(0.32,0.72,0,1) forwards;
+        transform: translateY(-100%);
+    `;
+    toast.innerHTML = `
+        <span style="font-size:28px; flex-shrink:0;">${logro.emoji}</span>
+        <div>
+            <p style="font-size:11px; font-weight:700; opacity:0.75; text-transform:uppercase; letter-spacing:0.05em;">¡Logro desbloqueado!</p>
+            <p style="font-size:14px; font-weight:800; margin-top:1px;">${logro.nombre}</p>
+            <p style="font-size:12px; opacity:0.75; margin-top:1px;">${logro.descripcion}</p>
+        </div>
+    `;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+        toast.style.transform = 'translateY(-120%)';
+        toast.style.opacity = '0';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 350);
+    }, 3500);
 }
 
 // ============================================================
