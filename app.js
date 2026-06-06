@@ -1503,7 +1503,7 @@ function activarDragAndDrop() {
             const touchEndY = e.changedTouches[0].clientY;
             const diff = touchEndY - touchStartY;
 
-            if (Math.abs(diff) < 10) return; // fue un tap, no drag
+            if (Math.abs(diff) < 30) return; // fue un tap, no drag
 
             const indexOrigen = misHabitos.findIndex(h => h.id === touchStartId);
             const nuevoPosicion = diff > 0 ? indexOrigen + 1 : indexOrigen - 1;
@@ -1553,33 +1553,6 @@ function seleccionarColor(color, btn) {
     document.getElementById('slider-meta').style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
     document.getElementById('slider-meta').style.setProperty('--slider-color', color);
 
-}
-
-
-function seleccionarMeta(dias, btn) {
-    metaSeleccionada = dias;
-    document.getElementById('habito-meta').value = dias;
-
-    const descripciones = {
-        1: '1 día a la semana — para empezar suave',
-        2: '2 días a la semana — ritmo ligero',
-        3: '3 días a la semana — equilibrado',
-        4: '4 días a la semana — constante',
-        5: '5 días a la semana — disciplinado',
-        7: '¡Todos los días! — modo bestia 🔥'
-    };
-    document.getElementById('meta-descripcion').innerText = descripciones[dias];
-
-    const color = document.getElementById('habito-color').value || '#6C63FF';
-    document.querySelectorAll('.meta-btn').forEach(b => {
-        b.style.background = '';
-        b.style.color = '';
-        b.classList.remove('text-white');
-        b.classList.add('bg-slate-100', 'text-slate-500');
-    });
-    btn.style.background = color;
-    btn.style.color = 'white';
-    btn.classList.remove('bg-slate-100', 'text-slate-500');
 }
 
 const CATEGORIAS_EMOJI = {
@@ -1735,6 +1708,7 @@ async function crearHabitoNuevo() {
         metaSemanal: resultado.habito.meta_semanal,
         fechaCreacion: resultado.habito.fecha_creacion,
         recordatorio: resultado.habito.recordatorio || null,
+        orden: misHabitos.length,
         registros: []
     };
 
@@ -1799,7 +1773,6 @@ function abrirDetalleHabito(id) {
 }
 
 function abrirEditarHabito() {
-    console.log('habitoDetalleActual:', habitoDetalleActual);
     if (!habitoDetalleActual) return;
     const habito = habitoDetalleActual;
     modoEdicion = true;
@@ -1830,16 +1803,22 @@ function abrirEditarHabito() {
         circulo.style.transform = 'translateX(24px)';
         document.getElementById('recordatorio-hora-container').classList.remove('hidden');
         document.getElementById('recordatorio-hora').value = habito.recordatorio;
+        // Actualizar displays visuales con la hora guardada
+        const partes = habito.recordatorio.split(':');
+        horaRecordatorio = parseInt(partes[0]);
+        minutoRecordatorio = parseInt(partes[1]);
+        document.getElementById('recordatorio-hora-display').innerText = partes[0];
+        document.getElementById('recordatorio-minuto-display').innerText = partes[1];
     } else {
         recordatorioActivo = false;
         document.getElementById('toggle-recordatorio').style.background = '';
         document.getElementById('toggle-recordatorio-circulo').style.transform = 'translateX(0)';
         document.getElementById('recordatorio-hora-container').classList.add('hidden');
         horaRecordatorio = 8;
-    minutoRecordatorio = 0;
-    document.getElementById('recordatorio-hora').value = '08:00';
-    document.getElementById('recordatorio-hora-display').innerText = '08';
-    document.getElementById('recordatorio-minuto-display').innerText = '00';
+        minutoRecordatorio = 0;
+        document.getElementById('recordatorio-hora').value = '08:00';
+        document.getElementById('recordatorio-hora-display').innerText = '08';
+        document.getElementById('recordatorio-minuto-display').innerText = '00';
     }
 
     // Cambiar título y botón
