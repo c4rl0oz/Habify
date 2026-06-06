@@ -477,10 +477,16 @@ function renderizarHabitos() {
         return;
     }
 
+    const fechaReferencia = diaSeleccionadoTira || hoyComoTexto();
+    const esHoyReferencia = fechaReferencia === hoyComoTexto();
+
     misHabitos.forEach(habito => {
+        // Solo mostrar hábitos que existían en la fecha seleccionada
+        if (habito.fechaCreacion > fechaReferencia) return;
+
         const completados = completadosEstaSemana(habito);
         const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
-        const yaHecho = completadoHoy(habito);
+        const yaHecho = habito.registros.includes(fechaReferencia);
         const racha = calcularRacha(habito);
         const enRiesgo = rachaEnRiesgo(habito);
         const color = habito.color || '#6C63FF';
@@ -511,7 +517,7 @@ function renderizarHabitos() {
                     <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
                 </div>
             </div>
-            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoHoy('${habito.id}')"
+            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoDia('${habito.id}', '${fechaReferencia}')"
                     class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
                     style="background:${yaHecho ? color : 'transparent'}; border:2px solid ${yaHecho ? color : '#e2e8f0'}">
                 ${yaHecho
@@ -548,33 +554,26 @@ function renderizarHabitos() {
 // TOGGLE HÁBITO HOY
 // Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
 // ============================================================
-async function toggleHabitoHoy(id) {
-    const habito = misHabitos.find(h => h.id === id);
+async function toggleHabitoDia(habitoId, fechaStr) {
+    const habito = misHabitos.find(h => h.id === habitoId);
     if (!habito || !usuarioActual) return;
 
-    const hoy = hoyComoTexto();
+    const completado = habito.registros.includes(fechaStr);
 
-    if (habito.registros.includes(hoy)) {
-        await desmarcarHabitoSupabase(id, hoy);
-        habito.registros = habito.registros.filter(f => f !== hoy);
+    if (completado) {
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
     } else {
-        await marcarHabitoSupabase(id, usuarioActual.id, hoy);
-        habito.registros.push(hoy);
-        if (navigator.vibrate) navigator.vibrate(50);
+        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        habito.registros.push(fechaStr);
+        if (navigator.vibrate) navigator.vibrate(30);
     }
 
+    animarCargaInicial = false;
     renderizarHabitos();
-
-    // Animación en el botón de check recién tocado
-    setTimeout(() => {
-        const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
-        if (btnCheck) {
-            btnCheck.classList.add('check-pop');
-            btnCheck.addEventListener('animationend', () => {
-                btnCheck.classList.remove('check-pop');
-            }, { once: true });
-        }
-    }, 20);
+    actualizarResumenHoy();
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
 }
 
 // ============================================================
@@ -1300,8 +1299,50 @@ btn.onclick = () => {
 
 function seleccionarDiaTira(fechaStr) {
     diaSeleccionadoTira = fechaStr;
+    animarCargaInicial = false;
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
+    renderizarHabitos();
+}
+
+async function toggleHabitoDia(habitoId, fechaStr) {
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (!habito || !usuarioActual) return;
+
+    const completado = habito.registros.includes(fechaStr);
+
+    if (completado) {
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
+    } else {
+        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        habito.registros.push(fechaStr);
+        if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // Actualizar UI del panel sin reconstruirlo todo
+    const div = document.querySelector(`[data-habito-id="${habitoId}"][data-fecha="${fechaStr}"]`);
+    const btn = document.querySelector(`[data-btn-habito="${habitoId}"]`);
+    const color = habito.color || '#6C63FF';
+    const ahoraCmpletado = habito.registros.includes(fechaStr);
+    const esDark = document.documentElement.classList.contains('dark');
+
+    if (div) {
+        div.style.background = ahoraCompletado ? color + '18' : (esDark ? '#0f0f0f' : '#f8fafc');
+        div.style.border = `1px solid ${ahoraCompletado ? color + '40' : (esDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`;
+    }
+    if (btn) {
+        btn.style.background = ahoraCompletado ? color : 'transparent';
+        btn.style.border = `2px solid ${ahoraCompletado ? color : '#e2e8f0'}`;
+        btn.innerHTML = ahoraCompletado
+            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    }
+
+    // Actualizar tira y resumen
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
+    actualizarResumenHoy();
 }
 
 function mostrarResumenDiaTira(fechaStr) {
@@ -1754,10 +1795,6 @@ function abrirDetalleHabito(id) {
     document.getElementById('stat-racha-max').innerText = rachaMax;
     document.getElementById('stat-total').innerText = total;
 
-    ['actividad-color-1', 'actividad-color-2', 'actividad-color-3'].forEach(id => {
-        document.getElementById(id).style.background = color;
-    });
-
     const yaHecho = completadoHoy(habito);
     const btnCheck = document.getElementById('detalle-btn-check');
     const esModoOscuro = document.documentElement.classList.contains('dark');
@@ -1940,14 +1977,17 @@ async function eliminarHabitoDesdeDetalle() {
 }
 
 function generarMapaActividad(habito) {
-    const grid = document.getElementById('grid-actividad');
-    grid.innerHTML = '';
+    const contenedor = document.getElementById('mapa-actividad');
+    contenedor.innerHTML = '';
     const color = habito.color || '#6C63FF';
+    const esDark = document.documentElement.classList.contains('dark');
     const hoy = new Date();
+
     const inicio = new Date(hoy);
     inicio.setDate(hoy.getDate() - 90);
     inicio.setDate(inicio.getDate() - inicio.getDay());
 
+    // Construir columnas por semana
     let diaActual = new Date(inicio);
     let semanaActual = [];
     const columnas = [];
@@ -1956,6 +1996,7 @@ function generarMapaActividad(habito) {
         const fechaStr = fechaComoTexto(diaActual.getFullYear(), diaActual.getMonth(), diaActual.getDate());
         semanaActual.push({
             fechaStr,
+            mes: diaActual.getMonth(),
             tieneRegistro: habito.registros.includes(fechaStr),
             esFuturo: diaActual > hoy
         });
@@ -1967,28 +2008,110 @@ function generarMapaActividad(habito) {
     }
     if (semanaActual.length > 0) columnas.push(semanaActual);
 
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const diasLabels = ['D','L','M','X','J','V','S'];
+
+    // Wrapper con flex para días + grid
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.gap = '4px';
+    wrapper.style.overflowX = 'auto';
+
+    // Columna de etiquetas de días
+    const labelsCol = document.createElement('div');
+    labelsCol.style.display = 'flex';
+    labelsCol.style.flexDirection = 'column';
+    labelsCol.style.gap = '3px';
+    labelsCol.style.flexShrink = '0';
+    labelsCol.style.marginTop = '16px'; // espacio para la fila de meses
+
+    [0,1,2,3,4,5,6].forEach(i => {
+        const lbl = document.createElement('div');
+        lbl.style.height = '12px';
+        lbl.style.lineHeight = '12px';
+        lbl.style.fontSize = '9px';
+        lbl.style.color = esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8';
+        lbl.style.width = '12px';
+        lbl.style.textAlign = 'center';
+        lbl.innerText = diasLabels[i];
+        labelsCol.appendChild(lbl);
+    });
+
+    wrapper.appendChild(labelsCol);
+
+    // Contenedor del grid con meses arriba
+    const gridWrapper = document.createElement('div');
+    gridWrapper.style.display = 'flex';
+    gridWrapper.style.flexDirection = 'column';
+    gridWrapper.style.gap = '3px';
+    gridWrapper.style.overflowX = 'auto';
+
+    // Fila de meses
+    const mesesRow = document.createElement('div');
+    mesesRow.style.display = 'flex';
+    mesesRow.style.gap = '3px';
+    mesesRow.style.height = '13px';
+
+    let ultimoMes = -1;
+    columnas.forEach(semana => {
+        const mesActual = semana[0]?.mes;
+        const lbl = document.createElement('div');
+        lbl.style.width = '12px';
+        lbl.style.fontSize = '9px';
+        lbl.style.color = esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8';
+        lbl.style.flexShrink = '0';
+        lbl.style.whiteSpace = 'nowrap';
+        if (mesActual !== ultimoMes) {
+            lbl.innerText = meses[mesActual];
+            lbl.style.width = '24px';
+            ultimoMes = mesActual;
+        }
+        mesesRow.appendChild(lbl);
+    });
+    gridWrapper.appendChild(mesesRow);
+
+    // Grid de celdas
+    const grid = document.createElement('div');
+    grid.style.display = 'flex';
+    grid.style.gap = '3px';
+
     columnas.forEach(semana => {
         const col = document.createElement('div');
         col.style.display = 'flex';
         col.style.flexDirection = 'column';
         col.style.gap = '3px';
+
         semana.forEach(({ tieneRegistro, esFuturo }) => {
             const celda = document.createElement('div');
             celda.style.width = '12px';
             celda.style.height = '12px';
             celda.style.borderRadius = '3px';
             celda.style.flexShrink = '0';
-            const esDarkMapa = document.documentElement.classList.contains('dark');
-            celda.style.background = esFuturo ? 'transparent' : tieneRegistro ? color : (esDarkMapa ? '#2a2a2a' : '#e2e8f0');
+            celda.style.background = esFuturo ? 'transparent'
+                : tieneRegistro ? color
+                : (esDark ? '#2a2a2a' : '#e2e8f0');
             col.appendChild(celda);
         });
         grid.appendChild(col);
     });
 
-    setTimeout(() => {
-        const mapa = document.getElementById('mapa-actividad');
-        mapa.scrollLeft = mapa.scrollWidth;
-    }, 50);
+    gridWrapper.appendChild(grid);
+    wrapper.appendChild(gridWrapper);
+    contenedor.appendChild(wrapper);
+
+    // Leyenda actualizada
+    const leyenda = document.createElement('div');
+    leyenda.style.cssText = 'display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:8px;';
+    leyenda.innerHTML = `
+        <span style="font-size:10px; color:${esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}">Sin completar</span>
+        <div style="width:12px;height:12px;border-radius:3px;background:${esDark ? '#2a2a2a' : '#e2e8f0'}"></div>
+        <div style="width:12px;height:12px;border-radius:3px;background:${color}"></div>
+        <span style="font-size:10px; color:${esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}">Completado</span>
+    `;
+    contenedor.appendChild(leyenda);
+
+    // Auto-scroll al final
+    setTimeout(() => { contenedor.scrollLeft = contenedor.scrollWidth; }, 50);
 }
 
 function generarUltimosRegistros(habito) {

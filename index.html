@@ -229,6 +229,7 @@
     <!-- Tira de días horizontal -->
     <div id="tira-dias" class="flex gap-2 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"></div>
     </div>
+
 </header>
 
     <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
@@ -606,14 +607,7 @@
             <div id="mapa-actividad" class="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 <div id="grid-actividad" class="flex gap-1"></div>
             </div>
-            <div class="flex items-center gap-2 justify-end">
-                <span class="text-[10px] text-slate-300 font-medium">Menos</span>
-                <div class="w-3 h-3 rounded-sm bg-slate-100"></div>
-                <div id="actividad-color-1" class="w-3 h-3 rounded-sm" style="opacity:0.3; background:#6C63FF"></div>
-                <div id="actividad-color-2" class="w-3 h-3 rounded-sm" style="opacity:0.6; background:#6C63FF"></div>
-                <div id="actividad-color-3" class="w-3 h-3 rounded-sm" style="background:#6C63FF"></div>
-                <span class="text-[10px] text-slate-300 font-medium">Más</span>
-            </div>
+            <div id="leyenda-actividad"></div>
         </div>
 
         <!-- Últimos registros -->
