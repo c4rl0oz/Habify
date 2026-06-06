@@ -13,12 +13,12 @@ let notasCacheadas = {};
 // ============================================================
 function abrirPantallaAnimada(id) {
     const el = document.getElementById(id);
+    el.classList.remove('pantalla-slide-up', 'pantalla-slide-down');
+    el.style.transform = '';
+    el.style.opacity = '';
     el.classList.remove('hidden');
-    el.style.transform = 'translateY(100%)';
-    requestAnimationFrame(() => {
-        el.classList.add('pantalla-slide-up');
-        el.style.transform = '';
-    });
+    void el.offsetHeight; // fuerza reflow
+    el.classList.add('pantalla-slide-up');
     el.addEventListener('animationend', () => {
         el.classList.remove('pantalla-slide-up');
     }, { once: true });
@@ -26,13 +26,15 @@ function abrirPantallaAnimada(id) {
 
 function cerrarPantallaAnimada(id, callback) {
     const el = document.getElementById(id);
-    el.classList.add('pantalla-slide-down');
-    el.addEventListener('animationend', () => {
-        el.classList.remove('pantalla-slide-down');
+    el.classList.remove('pantalla-slide-up');
+    el.classList.add('pantalla-cerrando');
+    setTimeout(() => {
+        el.classList.remove('pantalla-cerrando');
         el.classList.add('hidden');
-        el.style.transform = 'translateY(100%)';
+        el.style.transform = '';
+        el.style.opacity = '';
         if (callback) callback();
-    }, { once: true });
+    }, 280);
 }
 
 function hoyComoTexto() {

@@ -36,16 +36,10 @@
     .pantalla-slide-up {
         animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
     }
-    .pantalla-slide-down {
-        animation: slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-    }
-    @keyframes slideUp {
-        from { transform: translateY(100%); opacity: 0.6; }
-        to   { transform: translateY(0);    opacity: 1; }
-    }
-    @keyframes slideDown {
-        from { transform: translateY(0);    opacity: 1; }
-        to   { transform: translateY(100%); opacity: 0.6; }
+    .pantalla-cerrando {
+        transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease;
+        transform: translateY(110%) !important;
+        opacity: 0 !important;
     }
     .fade-in-up {
         opacity: 0;
