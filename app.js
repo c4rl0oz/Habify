@@ -6,6 +6,7 @@ let graficaSemanal = null;
 let graficaMensual = null;
 let diaSeleccionadoTira = hoyComoTexto();
 let animarCargaInicial = true;
+let notasCacheadas = {};
 
 // ============================================================
 // ANIMACIONES DE PANTALLA
@@ -264,52 +265,63 @@ async function verificarSesion() {
         return;
     }
 
-    // Buscar usuario en Supabase
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}&select=*`,
-        { headers }
-    );
-    const data = await res.json();
+    // Mostrar estado de carga
+    mostrarCargando(true);
 
-    if (data.length === 0) {
-        localStorage.removeItem('habify_usuario_id');
-        document.getElementById('pantalla-auth').classList.remove('hidden');
-        return;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}&select=*`,
+            { headers }
+        );
+        const data = await res.json();
+
+        if (data.length === 0) {
+            localStorage.removeItem('habify_usuario_id');
+            document.getElementById('pantalla-auth').classList.remove('hidden');
+            mostrarCargando(false);
+            return;
+        }
+
+        usuarioActual = data[0];
+        actualizarUIUsuario(usuarioActual);
+        await cargarDatosUsuario();
+        document.getElementById('pantalla-auth').classList.add('hidden');
+    } catch (e) {
+        mostrarError('Sin conexión. Revisa tu internet e intenta de nuevo.');
+    } finally {
+        mostrarCargando(false);
     }
-
-    usuarioActual = data[0];
-    await cargarDatosUsuario();
-    document.getElementById('pantalla-auth').classList.add('hidden');
-    actualizarUIUsuario(usuarioActual);
 }
 
 async function cargarDatosUsuario() {
     if (!usuarioActual) return;
 
-    // Cargar hábitos desde Supabase
-    const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
-    
-    // Cargar registros desde Supabase
-    const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
+    try {
+        const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
+        const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
 
-    // Convertir al formato que usa la app
-     misHabitos = habitosDB.map(h => ({
-        id: h.id,
-        nombre: h.nombre,
-        emoji: h.emoji,
-        color: h.color || '#6C63FF',
-        metaSemanal: h.meta_semanal,
-        fechaCreacion: h.fecha_creacion,
-        recordatorio: h.recordatorio || null,
-        orden: h.orden ?? 0,
-        registros: registrosDB
-            .filter(r => r.habito_id === h.id)
-            .map(r => r.fecha)
-    }));
-    renderizarHabitos();
-    actualizarResumenHoy();
-    inicializarTiraDias();
-    programarRecordatorios();
+        misHabitos = habitosDB.map(h => ({
+            id: h.id,
+            nombre: h.nombre,
+            emoji: h.emoji,
+            color: h.color || '#6C63FF',
+            metaSemanal: h.meta_semanal,
+            fechaCreacion: h.fecha_creacion,
+            recordatorio: h.recordatorio || null,
+            orden: h.orden ?? 0,
+            registros: registrosDB
+                .filter(r => r.habito_id === h.id)
+                .map(r => r.fecha)
+        }));
+
+        await cargarTodasLasNotas();
+        renderizarHabitos();
+        actualizarResumenHoy();
+        inicializarTiraDias();
+        programarRecordatorios();
+    } catch (e) {
+        mostrarError('Revisa tu conexión.');
+    }
 }
 
 function actualizarUIUsuario(usuario) {
@@ -369,16 +381,46 @@ function cerrarSesion() {
     }
 }
 // ============================================================
-// INICIALIZADOR
+// ESTADO DE CARGA Y ERRORES
 // ============================================================
+function mostrarCargando(activo) {
+    let el = document.getElementById('pantalla-cargando');
+    if (activo) {
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'pantalla-cargando';
+            el.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-black gap-4';
+            el.innerHTML = `
+                <div style="width:40px;height:40px;border-radius:50%;border:3px solid rgba(108,99,255,0.2);border-top-color:#6C63FF;animation:spin 0.8s linear infinite;"></div>
+                <p class="text-sm font-bold text-slate-400">Cargando...</p>
+                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+            `;
+            document.body.appendChild(el);
+        }
+        el.classList.remove('hidden');
+    } else {
+        if (el) el.classList.add('hidden');
+    }
+}
+
+function mostrarError(mensaje) {
+    let el = document.getElementById('toast-error');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'toast-error';
+        el.className = 'fixed top-6 left-6 right-6 z-[200] px-4 py-3 rounded-2xl text-white text-sm font-bold text-center transition-all';
+        el.style.background = '#f43f5e';
+        el.style.boxShadow = '0 4px 20px rgba(244,63,94,0.4)';
+        document.body.appendChild(el);
+    }
+    el.innerText = mensaje;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3500);
+}
 function inicializarApp() {
     inicializarModoOscuro();
-    verificarSesion();
-    actualizarSaludo();
-    renderizarHabitos();
-    actualizarResumenHoy();
     inicializarScrollResumen();
-    inicializarTiraDias();
+    verificarSesion();
 }
 
 // ============================================================
@@ -1037,63 +1079,6 @@ function generarListaRachas() {
         `;
     });
 }
-
-// ============================================================
-// GRID DE EMOJIS
-// ============================================================
-function inicializarGridEmojis() {
-    const emojis = [
-        "🏃","🚴","🏋️","🧘","🤸","⚽","🏊",
-        "🧗","🎾","🏄","⛷️","🥊","🏇","🤾",
-        "💧","🍏","🥗","🍎","🥦","🫐","🥤",
-        "🍵","🥑","🍇","🥕","🫚","🍱","🥩",
-        "📚","✏️","🎯","💡","🧠","📖","🎓",
-        "💻","📝","🔬","📐","🗂️","📌","🖊️",
-        "😴","⏰","☀️","🌙","🧹","🛁","🪥",
-        "💰","📊","💼","📈","✅","💳","🏦",
-        "🎨","🎵","🎸","🎹","✍️","📷","🎬",
-        "🌱","🌿","❤️","🙏","💪","🔥","⭐"
-    ];
-
-    const grid = document.getElementById('grid-emojis-panel');
-    if (!grid) return;
-
-    grid.innerHTML = '';
-
-    emojis.forEach(emoji => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.innerText = emoji;
-        btn.className = 'text-2xl p-2 rounded-2xl hover:bg-slate-100 active:scale-90 transition-all emoji-btn flex items-center justify-center';
-        btn.onclick = () => seleccionarEmoji(emoji, btn);
-        grid.appendChild(btn);
-    });
-}
-
-function seleccionarEmoji(emoji, btnClickeado) {
-    document.getElementById('habito-emoji').value = emoji;
-    document.getElementById('emoji-seleccionado').innerText = emoji;
-
-    document.querySelectorAll('.emoji-btn').forEach(btn => {
-        btn.classList.remove('bg-[#333538]', 'scale-110');
-        btn.style.filter = '';
-    });
-
-    btnClickeado.classList.add('bg-[#333538]');
-    btnClickeado.style.filter = 'brightness(10)';
-
-    setTimeout(() => cerrarSelectorEmoji(), 200);
-}
-
-function abrirSelectorEmoji() {
-    document.getElementById('selector-emoji').classList.remove('hidden');
-    inicializarGridEmojis();
-}
-
-function cerrarSelectorEmoji() {
-    document.getElementById('selector-emoji').classList.add('hidden');
-}
-
 // ============================================================
 // OCULTAR RESUMEN AL HACER SCROLL
 // ============================================================
@@ -1160,12 +1145,25 @@ if (catActiva && !document.getElementById('pantalla-crear-habito').classList.con
 // REGISTRO DIARIO - NOTAS POR FECHA
 // ============================================================
 
-function obtenerNotas() {
-    return JSON.parse(localStorage.getItem('habify_notas')) || {};
+async function cargarTodasLasNotas() {
+    if (!usuarioActual) return;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioActual.id}&nota=not.is.null&select=fecha,nota`,
+            { headers }
+        );
+        const data = await res.json();
+        notasCacheadas = {};
+        data.forEach(r => {
+            if (r.nota && r.nota.trim()) notasCacheadas[r.fecha] = r.nota;
+        });
+    } catch (e) {
+        notasCacheadas = {};
+    }
 }
 
-function guardarNotas(notas) {
-    localStorage.setItem('habify_notas', JSON.stringify(notas));
+function obtenerNotas() {
+    return notasCacheadas;
 }
 
 async function cargarNotaDia(fechaStr) {
@@ -1218,6 +1216,12 @@ async function guardarNotaDia() {
         }
     }
 
+    // Actualizar caché local
+    if (texto) {
+        notasCacheadas[fechaActual] = texto;
+    } else {
+        delete notasCacheadas[fechaActual];
+    }
     msg.classList.remove('hidden');
     setTimeout(() => msg.classList.add('hidden'), 2000);
     generarCalendarioMensual();
