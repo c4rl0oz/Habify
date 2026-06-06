@@ -1320,29 +1320,40 @@ async function toggleHabitoDia(habitoId, fechaStr) {
         if (navigator.vibrate) navigator.vibrate(30);
     }
 
-    // Actualizar UI del panel sin reconstruirlo todo
-    const div = document.querySelector(`[data-habito-id="${habitoId}"][data-fecha="${fechaStr}"]`);
-    const btn = document.querySelector(`[data-btn-habito="${habitoId}"]`);
-    const color = habito.color || '#6C63FF';
-    const ahoraCmpletado = habito.registros.includes(fechaStr);
-    const esDark = document.documentElement.classList.contains('dark');
-
-    if (div) {
-        div.style.background = ahoraCompletado ? color + '18' : (esDark ? '#0f0f0f' : '#f8fafc');
-        div.style.border = `1px solid ${ahoraCompletado ? color + '40' : (esDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0')}`;
-    }
-    if (btn) {
-        btn.style.background = ahoraCompletado ? color : 'transparent';
-        btn.style.border = `2px solid ${ahoraCompletado ? color : '#e2e8f0'}`;
-        btn.innerHTML = ahoraCompletado
-            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-    }
-
-    // Actualizar tira y resumen
+    animarCargaInicial = false;
+    renderizarHabitos();
+    actualizarResumenHoy();
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
-    actualizarResumenHoy();
+}
+
+async function toggleHabitoHoy(id) {
+    const habito = misHabitos.find(h => h.id === id);
+    if (!habito || !usuarioActual) return;
+
+    const fechaRef = diaSeleccionadoTira || hoyComoTexto();
+
+    if (habito.registros.includes(fechaRef)) {
+        await desmarcarHabitoSupabase(id, fechaRef);
+        habito.registros = habito.registros.filter(f => f !== fechaRef);
+    } else {
+        await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
+        habito.registros.push(fechaRef);
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    animarCargaInicial = false;
+    renderizarHabitos();
+
+    setTimeout(() => {
+        const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
+        if (btnCheck) {
+            btnCheck.classList.add('check-pop');
+            btnCheck.addEventListener('animationend', () => {
+                btnCheck.classList.remove('check-pop');
+            }, { once: true });
+        }
+    }, 20);
 }
 
 function mostrarResumenDiaTira(fechaStr) {
