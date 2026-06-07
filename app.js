@@ -587,7 +587,7 @@ function renderizarHabitos() {
         const color = habito.color || '#6C63FF';
 
         const esDark = document.documentElement.classList.contains('dark');
-        const colorFondo = yaHecho ? color + '22' : (esDark ? '#0f0f0f' : 'transparent');
+        const colorFondo = yaHecho ? color + '22' : (esDark ? '#0f0f0f' : '#f1f5f9');
         const borderColor = yaHecho ? color + '50' : (esDark ? 'rgba(255,255,255,0.10)' : '#e2e8f0');
         
 
@@ -1921,6 +1921,10 @@ function seleccionarColor(color, btn) {
     document.getElementById('btn-crear-habito').style.background = color;
     document.getElementById('btn-crear-habito').style.boxShadow = `0 6px 24px ${color}40, 0 2px 8px ${color}25`;
 
+    // Actualizar botones de tipo con el nuevo color
+    const tipoActual = document.getElementById('habito-tipo').value;
+    seleccionarTipoHabito(tipoActual);
+
     // Reset todos los botones de color
     document.querySelectorAll('.color-btn').forEach(b => {
         b.style.outline = 'none';
@@ -1985,6 +1989,7 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
     const emojis = CATEGORIAS_EMOJI[categoria] || [];
 
     fila.innerHTML = '';
+    const emojiSeleccionadoActual = document.getElementById('habito-emoji').value;
     emojis.forEach(({ e, n }) => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1996,6 +2001,7 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
             document.getElementById('emoji-nombre-preview').innerText = n;
             document.querySelectorAll('.emoji-cat-btn').forEach(b => {
                 b.style.background = '';
+                b.style.outline = 'none';
                 b.classList.add('bg-slate-100');
             });
             const color = document.getElementById('habito-color').value || '#6C63FF';
@@ -2004,6 +2010,12 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
             btn.style.outlineOffset = '0px';
         };
         fila.appendChild(btn);
+        if (e === emojiSeleccionadoActual) {
+            const color = document.getElementById('habito-color').value || '#6C63FF';
+            btn.style.background = color + '30';
+            btn.style.outline = `2px solid ${color}`;
+            btn.style.outlineOffset = '0px';
+        }
     });
 
     const esDark = document.documentElement.classList.contains('dark');
@@ -2338,20 +2350,17 @@ async function guardarEdicionHabito() {
         habitoDetalleActual = habito;
     }
 
+    const idHabitoEditado = habitoDetalleActual.id;
     modoEdicion = false;
     cerrarPantallaAnimada('pantalla-crear-habito', () => {
-        // Resetear pantalla crear a su estado original
         document.querySelector('#pantalla-crear-habito h2').innerText = 'Nuevo hábito';
         const btnCrear = document.getElementById('btn-crear-habito');
         btnCrear.onclick = crearHabitoNuevo;
         btnCrear.disabled = false;
+        renderizarHabitos();
+        actualizarResumenHoy();
+        abrirDetalleHabito(idHabitoEditado);
     });
-
-    renderizarHabitos();
-    actualizarResumenHoy();
-
-    // Refrescar detalle sin cerrar la pantalla
-    abrirDetalleHabito(habitoDetalleActual.id);
 }
 
 function cerrarDetalleHabito() {
