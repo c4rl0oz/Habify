@@ -538,7 +538,7 @@ function renderizarHabitos() {
             const bHecho = b.registros.includes(fechaReferencia) ? 1 : 0;
             if (aHecho !== bHecho) return aHecho - bHecho;
 
-            return new Date(a.fechaCreacion) - new Date(b.fechaCreacion);
+            return new Date(b.fechaCreacion) - new Date(a.fechaCreacion);
         });
 
     habitosOrdenados.forEach(habito => {
@@ -672,8 +672,8 @@ async function togglePin(habitoId) {
         const btnPin = document.getElementById('detalle-btn-pin');
         if (btnPin) {
             btnPin.style.background = habito.pinneado ? '#6C63FF' : '';
-            btnPin.style.color = habito.pinneado ? 'white' : '';
-            btnPin.innerText = habito.pinneado ? '📌 Pinneado' : '📌 Pinnear';
+            const svg = btnPin.querySelector('svg');
+            if (svg) svg.style.stroke = habito.pinneado ? 'white' : '';
         }
     }
 
@@ -2111,7 +2111,8 @@ function abrirDetalleHabito(id) {
     const btnPin = document.getElementById('detalle-btn-pin');
     if (btnPin) {
         btnPin.style.background = habito.pinneado ? '#6C63FF' : '';
-        btnPin.style.color = habito.pinneado ? 'white' : '';
+        const svg = btnPin.querySelector('svg');
+        if (svg) svg.style.stroke = habito.pinneado ? 'white' : '';
     }
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
