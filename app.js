@@ -1033,37 +1033,49 @@ function irAPantalla(pantalla) {
     const calendario = document.getElementById('pantalla-calendario');
     const estadisticas = document.getElementById('pantalla-estadisticas');
     const resumen = document.getElementById('resumen-hoy');
+    const tira = document.getElementById('tira-dias');
 
-    // Ocultamos todas las pantallas
     inicio.classList.add('hidden');
     calendario.classList.add('hidden');
     estadisticas.classList.add('hidden');
 
     if (pantalla === 'inicio') {
         inicio.classList.remove('hidden');
-        resumen.classList.remove('hidden'); // Mostramos resumen solo en inicio
+        resumen.classList.remove('hidden');
+        if (tira) tira.classList.remove('hidden');
     } else if (pantalla === 'calendario') {
         calendario.classList.remove('hidden');
-        resumen.classList.add('hidden'); // Ocultamos resumen en calendario
+        resumen.classList.add('hidden');
+        if (tira) tira.classList.add('hidden');
         generarCalendarioMensual();
     } else if (pantalla === 'estadisticas') {
         estadisticas.classList.remove('hidden');
-        resumen.classList.add('hidden'); // Ocultamos resumen en estadísticas
+        resumen.classList.add('hidden');
+        if (tira) tira.classList.remove('hidden');
         generarEstadisticas();
     }
 }
 
 function generarEstadisticas() {
-    // Fecha actual
-    const hoy = new Date();
+    const fechaRef = diaSeleccionadoTira || hoyComoTexto();
+    const fecha = new Date(fechaRef + 'T00:00:00');
+    const hoyStr = hoyComoTexto();
     const nombresMeses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
                           "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    const fechaEl = document.getElementById('stats-fecha');
-    if (fechaEl) fechaEl.innerText = `${hoy.getDate()} de ${nombresMeses[hoy.getMonth()]}`;
 
-    // --- PRODUCTIVIDAD HOY ---
-    const total = misHabitos.length;
-    const hechos = misHabitos.filter(h => completadoHoy(h)).length;
+    const fechaEl = document.getElementById('stats-fecha');
+    if (fechaEl) fechaEl.innerText = fechaRef === hoyStr
+        ? `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`
+        : `${fecha.getDate()} de ${nombresMeses[fecha.getMonth()]}`;
+
+    // Etiqueta de la tarjeta de productividad
+    const labelProd = document.getElementById('stats-label-prod');
+    if (labelProd) labelProd.innerText = fechaRef === hoyStr ? 'PRODUCTIVIDAD HOY' : `DÍA ${fecha.getDate()} DE ${nombresMeses[fecha.getMonth()].toUpperCase()}`;
+
+    // --- PRODUCTIVIDAD DEL DÍA SELECCIONADO ---
+    const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fechaRef);
+    const total = habitosDelDia.length;
+    const hechos = habitosDelDia.filter(h => h.registros.includes(fechaRef)).length;
     const porcentaje = total === 0 ? 0 : Math.round((hechos / total) * 100);
 
     document.getElementById('stats-porcentaje').innerText = `${porcentaje}%`;
@@ -1073,17 +1085,16 @@ function generarEstadisticas() {
         document.getElementById('stats-anillo').setAttribute('stroke-dasharray', `${porcentaje}, 100`);
     }, 100);
 
-    // --- GRÁFICA SEMANAL ---
-    generarGraficaSemanal();
-    generarGraficaMensual();
+    // --- GRÁFICAS centradas en la fecha seleccionada ---
+    generarGraficaSemanal(fechaRef);
+    generarGraficaMensual(fechaRef);
 
-    // --- RACHAS ---
+    // --- RACHAS (siempre del momento actual) ---
     generarListaRachas();
 }
 
-function generarGraficaSemanal() {
-    // Obtenemos los 7 días de la semana actual (lunes a domingo)
-    const hoy = new Date();
+function generarGraficaSemanal(fechaRef) {
+    const hoy = fechaRef ? new Date(fechaRef + 'T00:00:00') : new Date();
     const diaSemana = hoy.getDay();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - ((diaSemana + 6) % 7));
@@ -1124,8 +1135,8 @@ function generarGraficaSemanal() {
                 label: 'Hábitos completados',
                 data: datos,
                 backgroundColor: fechasDias.map(fecha => {
-                    const esHoy = fecha === hoyComoTexto();
-                    return esHoy ? '#6C63FF' : '#b9b8ba' + '80';
+                    const esSeleccionado = fecha === (fechaRef || hoyComoTexto());
+                    return esSeleccionado ? '#6C63FF' : '#b9b8ba80';
                 }),
                 borderRadius: 8,
                 borderSkipped: false,
@@ -1168,8 +1179,8 @@ function generarGraficaSemanal() {
     });
 }
 
-function generarGraficaMensual() {
-    const hoy = new Date();
+function generarGraficaMensual(fechaRef) {
+    const hoy = fechaRef ? new Date(fechaRef + 'T00:00:00') : new Date();
     const etiquetas = [];
     const fechasDias = [];
     const datos = [];
@@ -1516,6 +1527,12 @@ function seleccionarDiaTira(fechaStr) {
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
     renderizarHabitos();
+
+    // Si estadísticas está visible, actualizarla con el nuevo día
+    const pantallaStats = document.getElementById('pantalla-estadisticas');
+    if (pantallaStats && !pantallaStats.classList.contains('hidden')) {
+        generarEstadisticas();
+    }
 }
 
 async function toggleHabitoDia(habitoId, fechaStr) {
