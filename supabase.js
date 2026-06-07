@@ -127,10 +127,12 @@ async function obtenerRegistrosSupabase(usuarioId) {
 }
 
 async function marcarHabitoSupabase(habitoId, usuarioId, fecha) {
+    const ahora = new Date();
+    const hora = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha })
+        body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, hora })
     });
     return res.ok;
 }
@@ -157,10 +159,12 @@ async function guardarCantidadSupabase(habitoId, usuarioId, fecha, cantidad) {
             body: JSON.stringify({ cantidad })
         });
     } else {
+        const ahora = new Date();
+        const hora = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
         await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, cantidad })
+            body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, cantidad, hora })
         });
     }
 }

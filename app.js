@@ -752,6 +752,7 @@ async function ajustarContador(habitoId, fechaStr, delta) {
     actualizarResumenHoy();
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
+    verificarDiaPerfecto();
 }
 async function toggleHabitoDia(habitoId, fechaStr) {
     const habito = misHabitos.find(h => h.id === habitoId);
@@ -774,6 +775,7 @@ async function toggleHabitoDia(habitoId, fechaStr) {
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
     verificarNuevosLogros();
+    verificarDiaPerfecto();
 }
 
 // ============================================================
@@ -1574,6 +1576,7 @@ async function toggleHabitoHoy(id) {
 
     animarCargaInicial = false;
     renderizarHabitos();
+    verificarDiaPerfecto();
 
     setTimeout(() => {
         const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
@@ -2742,6 +2745,100 @@ function mostrarNotificacionLogro(logro) {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 350);
     }, 3500);
+}
+
+// ============================================================
+// DÍA PERFECTO
+// ============================================================
+function verificarDiaPerfecto() {
+    const hoy = hoyComoTexto();
+    const yaVisto = localStorage.getItem('habify_dia_perfecto') === hoy;
+    if (yaVisto) return;
+
+    const habitosHoy = misHabitos.filter(h => h.fechaCreacion <= hoy);
+    if (habitosHoy.length === 0) return;
+
+    const todosCompletos = habitosHoy.every(h => h.registros.includes(hoy));
+    if (!todosCompletos) return;
+
+    // Poblar stats
+    document.getElementById('dia-perfecto-total').innerText = habitosHoy.length;
+    const rachaMax = misHabitos.reduce((max, h) => Math.max(max, calcularRacha(h)), 0);
+    document.getElementById('dia-perfecto-racha').innerText = rachaMax > 0 ? `🔥 ${rachaMax}` : '—';
+
+    // Lanzar confetti
+    const contenedor = document.getElementById('dia-perfecto-confetti');
+    contenedor.innerHTML = '';
+    const colors = ['#6C63FF','#a78bfa','#ffffff','#c4b5fd','#818cf8'];
+    for (let i = 0; i < 38; i++) {
+        const el = document.createElement('div');
+        const size = Math.random() * 6 + 4;
+        const left = Math.random() * 100;
+        const delay = Math.random() * 2;
+        const duration = Math.random() * 2 + 2;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        el.style.cssText = `
+            position:absolute; width:${size}px; height:${size}px;
+            background:${color}; left:${left}%;  top:-10px; opacity:0;
+            border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+            animation:dpConfetti${i} ${duration}s ${delay}s ease-in infinite;
+        `;
+        contenedor.appendChild(el);
+
+        const style = document.createElement('style');
+        style.textContent = `@keyframes dpConfetti${i} {
+            0%   { transform:translateY(0) rotate(0deg);   opacity:1; }
+            80%  { opacity:0.6; }
+            100% { transform:translateY(560px) rotate(${Math.random()*360}deg); opacity:0; }
+        }`;
+        document.head.appendChild(style);
+    }
+
+    // Adaptar colores al modo actual
+    const esDark = document.documentElement.classList.contains('dark');
+    const tarjeta = document.querySelector('#pantalla-dia-perfecto > div');
+    tarjeta.style.background = esDark ? '#000' : '#ffffff';
+    tarjeta.style.borderColor = esDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+    // Título grande
+    const titulo = document.querySelector('#pantalla-dia-perfecto p[style*="26px"]');
+    if (titulo) titulo.style.color = esDark ? '#ffffff' : '#0f0f0f';
+
+    // Subtítulo "Todos tus hábitos..."
+    const subtitulo = document.querySelector('#pantalla-dia-perfecto p[style*="13px"]');
+    if (subtitulo) subtitulo.style.color = esDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.5)';
+
+    // Labels de mini-cards
+    const labelColor = esDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)';
+    document.getElementById('dia-perfecto-label-1').style.color = labelColor;
+    document.getElementById('dia-perfecto-label-2').style.color = labelColor;
+
+    // Fondos de mini-cards
+    const cardBg = esDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+    const cardBorder = esDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    document.getElementById('dia-perfecto-card-1').style.background = cardBg;
+    document.getElementById('dia-perfecto-card-1').style.borderColor = cardBorder;
+    document.getElementById('dia-perfecto-card-2').style.background = cardBg;
+    document.getElementById('dia-perfecto-card-2').style.borderColor = cardBorder;
+
+    // Mostrar pantalla
+    const pantalla = document.getElementById('pantalla-dia-perfecto');
+    pantalla.classList.remove('hidden');
+    pantalla.style.opacity = '0';
+    pantalla.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => { pantalla.style.opacity = '1'; }, 10);
+
+    localStorage.setItem('habify_dia_perfecto', hoy);
+}
+
+function cerrarDiaPerfecto() {
+    const pantalla = document.getElementById('pantalla-dia-perfecto');
+    pantalla.style.opacity = '0';
+    setTimeout(() => {
+        pantalla.classList.add('hidden');
+        pantalla.style.opacity = '';
+        pantalla.style.transition = '';
+    }, 350);
 }
 
 // ============================================================
