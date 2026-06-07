@@ -315,10 +315,10 @@ async function cargarDatosUsuario() {
             unidad: h.unidad || null,
             metaCantidad: h.meta_cantidad || null,
             registros: registrosDB
-                .filter(r => r.habito_id === h.id)
+                .filter(r => r.habito_id === h.id && (h.tipo !== 'contador' || r.cantidad >= (h.meta_cantidad || 1)))
                 .map(r => r.fecha),
             cantidades: registrosDB
-                .filter(r => r.habito_id === h.id && r.cantidad)
+                .filter(r => r.habito_id === h.id && r.cantidad != null)
                 .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {})
         }));
 
@@ -609,10 +609,6 @@ function renderizarHabitos() {
         animarCargaInicial = false;
     }
 }
-// ============================================================
-// TOGGLE HÁBITO HOY
-// Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
-// ============================================================
 async function ajustarContadorDetalle(delta) {
     if (!habitoDetalleActual) return;
     const habito = habitoDetalleActual;
@@ -659,31 +655,58 @@ async function ajustarContador(habitoId, fechaStr, delta) {
     const nuevaCantidad = Math.max(0, cantidadActual + delta);
     habito.cantidades[fechaStr] = nuevaCantidad;
 
-    const metaCantidad = habito.metaCantidad || 1;
+    const metaCantidad = habito.metaCantidad;
+    if (!metaCantidad || metaCantidad < 1) {
+        mostrarError('Este hábito no tiene meta definida.');
+        return;
+    }    
     const yaCompletado = habito.registros.includes(fechaStr);
 
     if (nuevaCantidad >= metaCantidad && !yaCompletado) {
-        // Marcar como completado
+        // Llegó a la meta — marcar como completado
         await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
-        // Guardar cantidad en ese mismo registro
+        // Guardar cantidad en ese registro
         await fetch(
             `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
             { method: 'PATCH', headers, body: JSON.stringify({ cantidad: nuevaCantidad }) }
         );
         if (navigator.vibrate) navigator.vibrate(30);
         verificarNuevosLogros();
+
     } else if (nuevaCantidad < metaCantidad && yaCompletado) {
-        // Desmarcar — borrar registro completamente
+        // Bajó de la meta — desmarcar y guardar cantidad parcial
         await desmarcarHabitoSupabase(habitoId, fechaStr);
         habito.registros = habito.registros.filter(f => f !== fechaStr);
-        // NO guardar cantidad aquí — el registro fue borrado
+        // Guardar cantidad parcial en nuevo registro
+        if (nuevaCantidad > 0) {
+            await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    habito_id: habitoId,
+                    usuario_id: usuarioActual.id,
+                    fecha: fechaStr,
+                    cantidad: nuevaCantidad
+                })
+            });
+        }
+
     } else if (!yaCompletado && nuevaCantidad > 0) {
-        // Solo actualizar cantidad, sin marcar completado
+        // Progreso parcial sin completar — guardar o actualizar
         await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
-    } else if (nuevaCantidad === 0) {
-        // Borrar registro si existe
+
+    } else if (nuevaCantidad === 0 && yaCompletado) {
+        // Bajó a 0 estando completado — desmarcar y borrar
         await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
+
+    } else if (nuevaCantidad === 0 && !yaCompletado) {
+        // Bajó a 0 sin estar completado — borrar registro parcial si existe
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
+            { method: 'DELETE', headers }
+        );
     }
 
     // Actualizar UI
