@@ -2143,8 +2143,11 @@ function abrirDetalleHabito(id) {
         const svg = btnPin.querySelector('svg');
         if (svg) svg.style.stroke = habito.pinneado ? 'white' : '';
     }
+    generarPatronDias(habito);
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
+
+    abrirPantallaAnimada('pantalla-detalle-habito');
 
     // Mostrar contador en detalle si aplica
     const contadorDetalle = document.getElementById('detalle-contador');
@@ -3089,6 +3092,65 @@ function generarComparativaSemanal() {
         msgTexto.style.color = '#b91c1c';
         msgTexto.innerText = 'Esta semana va un poco más lento. ¡Aún estás a tiempo de revertirlo! 🔥';
     }
+}
+// ============================================================
+// PATRÓN DE DÍAS POR HÁBITO
+// ============================================================
+function generarPatronDias(habito) {
+    const grid = document.getElementById('patron-dias-grid');
+    const insightTexto = document.getElementById('patron-dias-insight-texto');
+    if (!grid || !insightTexto) return;
+
+    const color = habito.color || '#6C63FF';
+    const esDark = document.documentElement.classList.contains('dark');
+    const diasNombre = ['D','L','M','M','J','V','S'];
+    const conteo = [0,0,0,0,0,0,0]; // índice 0=Dom, 1=Lun ... 6=Sáb
+
+    habito.registros.forEach(fecha => {
+        const d = new Date(fecha + 'T00:00:00');
+        conteo[d.getDay()]++;
+    });
+
+    const maximo = Math.max(...conteo, 1);
+
+    grid.innerHTML = '';
+    conteo.forEach((count, i) => {
+        const altura = Math.round((count / maximo) * 48);
+        const esMejor = count === maximo && count > 0;
+        const opacidad = count === 0 ? 0.15 : 0.2 + (count / maximo) * 0.8;
+
+        grid.innerHTML += `
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;">
+                <div style="width:100%; height:48px; border-radius:8px; background:${color}18; display:flex; align-items:flex-end;">
+                    <div style="width:100%; height:${Math.max(altura, count > 0 ? 6 : 0)}px; border-radius:8px; background:${color}; opacity:${opacidad.toFixed(2)};"></div>
+                </div>
+                <p style="font-size:11px; font-weight:${esMejor ? '800' : '600'}; color:${esMejor ? color : (esDark ? 'rgba(255,255,255,0.4)' : '#94a3b8')}; margin:0;">${diasNombre[i]}</p>
+                <p style="font-size:10px; color:${esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}; margin:0; font-weight:600;">${count}x</p>
+            </div>
+        `;
+    });
+
+    // Insight — mejor y peor día
+    if (habito.registros.length === 0) {
+        insightTexto.innerText = 'Aún no hay suficientes datos para detectar un patrón.';
+        return;
+    }
+
+    const diasNombreCompleto = ['domingos','lunes','martes','miércoles','jueves','viernes','sábados'];
+    const mejorIdx = conteo.indexOf(Math.max(...conteo));
+    const diasConDatos = conteo.filter(c => c > 0);
+    
+    let insight = `💡 Eres más constante los ${diasNombreCompleto[mejorIdx]}`;
+
+    if (diasConDatos.length > 1) {
+        const minVal = Math.min(...conteo.filter(c => c > 0));
+        const peorIdx = conteo.indexOf(minVal);
+        if (peorIdx !== mejorIdx) {
+            insight += ` — intenta reforzar los ${diasNombreCompleto[peorIdx]}`;
+        }
+    }
+
+    insightTexto.innerText = insight;
 }
 // ============================================================
 // ARRANCAR
