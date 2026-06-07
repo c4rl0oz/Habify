@@ -638,45 +638,63 @@ async function ajustarContadorDetalle(delta) {
     // Actualizar stats de racha
     document.getElementById('stat-racha-actual').innerText = calcularRacha(habito);
     document.getElementById('stat-total').innerText = habito.registros.length;
+
+    // Actualizar mapa de actividad
+    generarMapaActividad(habito);
+
+    // Re-renderizar tarjetas para reflejar el cambio de estado
+    animarCargaInicial = false;
+    renderizarHabitos();
+    actualizarResumenHoy();
+    inicializarTiraDias();
+    mostrarResumenDiaTira(hoyComoTexto());
 }
 
 async function ajustarContador(habitoId, fechaStr, delta) {
     const habito = misHabitos.find(h => h.id === habitoId);
     if (!habito || !usuarioActual) return;
 
-    const cantidadActual = habito.cantidades?.[fechaStr] || 0;
-    const nuevaCantidad = Math.max(0, cantidadActual + delta);
-    
     if (!habito.cantidades) habito.cantidades = {};
+    const cantidadActual = habito.cantidades[fechaStr] || 0;
+    const nuevaCantidad = Math.max(0, cantidadActual + delta);
     habito.cantidades[fechaStr] = nuevaCantidad;
 
-    // Si llega a la meta, marcar como completado
     const metaCantidad = habito.metaCantidad || 1;
     const yaCompletado = habito.registros.includes(fechaStr);
 
     if (nuevaCantidad >= metaCantidad && !yaCompletado) {
+        // Marcar como completado
         await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
+        // Guardar cantidad en ese mismo registro
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
+            { method: 'PATCH', headers, body: JSON.stringify({ cantidad: nuevaCantidad }) }
+        );
         if (navigator.vibrate) navigator.vibrate(30);
+        verificarNuevosLogros();
     } else if (nuevaCantidad < metaCantidad && yaCompletado) {
+        // Desmarcar — borrar registro completamente
         await desmarcarHabitoSupabase(habitoId, fechaStr);
         habito.registros = habito.registros.filter(f => f !== fechaStr);
+        // NO guardar cantidad aquí — el registro fue borrado
+    } else if (!yaCompletado && nuevaCantidad > 0) {
+        // Solo actualizar cantidad, sin marcar completado
+        await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
+    } else if (nuevaCantidad === 0) {
+        // Borrar registro si existe
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
     }
 
-    // Guardar cantidad en Supabase
-    await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
-
-    // Actualizar solo el contador en el DOM sin re-renderizar todo
+    // Actualizar UI
     const cantidadEl = document.querySelector(`[data-cantidad-id="${habitoId}"]`);
-    if (cantidadEl) {
-        cantidadEl.innerText = nuevaCantidad;
-        cantidadEl.style.color = nuevaCantidad >= metaCantidad ? habito.color : habito.color;
-    }
+    if (cantidadEl) cantidadEl.innerText = nuevaCantidad;
 
+    animarCargaInicial = false;
+    renderizarHabitos();
     actualizarResumenHoy();
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
-    verificarNuevosLogros();
 }
 async function toggleHabitoDia(habitoId, fechaStr) {
     const habito = misHabitos.find(h => h.id === habitoId);
@@ -1676,24 +1694,55 @@ function activarDragAndDrop() {
             renderizarHabitos();
         });
 
-        // Touch para móvil
+        // Touch para móvil — long press para activar drag
         let touchStartY = 0;
+        let touchStartX = 0;
         let touchStartId = null;
+        let longPressTimer = null;
+        let dragActivo = false;
 
         tarjeta.addEventListener('touchstart', e => {
             touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
             touchStartId = tarjeta.dataset.id;
-            tarjeta.style.opacity = '0.7';
-            tarjeta.style.transform = 'scale(0.97)';
+            dragActivo = false;
+
+            // Activar drag solo después de 400ms presionando
+            longPressTimer = setTimeout(() => {
+                dragActivo = true;
+                tarjeta.style.opacity = '0.7';
+                tarjeta.style.transform = 'scale(0.97)';
+                tarjeta.style.transition = 'transform 0.2s, opacity 0.2s';
+                if (navigator.vibrate) navigator.vibrate(40);
+            }, 400);
+        }, { passive: true });
+
+        tarjeta.addEventListener('touchmove', e => {
+            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+
+            // Si se mueve antes del long press, cancelar
+            if (!dragActivo && (moveX > 8 || moveY > 8)) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
         }, { passive: true });
 
         tarjeta.addEventListener('touchend', e => {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+
             tarjeta.style.opacity = '1';
             tarjeta.style.transform = '';
+            tarjeta.style.transition = '';
+
+            if (!dragActivo) return; // no era drag, fue tap normal
+            dragActivo = false;
+
             const touchEndY = e.changedTouches[0].clientY;
             const diff = touchEndY - touchStartY;
 
-            if (Math.abs(diff) < 30) return; // fue un tap, no drag
+            if (Math.abs(diff) < 20) return;
 
             const indexOrigen = misHabitos.findIndex(h => h.id === touchStartId);
             const nuevoPosicion = diff > 0 ? indexOrigen + 1 : indexOrigen - 1;
