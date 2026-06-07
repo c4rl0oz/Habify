@@ -60,7 +60,7 @@ async function obtenerHabitosSupabase(usuarioId) {
     return await res.json();
 }
 
-async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF', recordatorio = null) {
+async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF', recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
@@ -72,18 +72,21 @@ async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaC
             fecha_creacion: fechaCreacion,
             color,
             recordatorio,
-            orden: 0
+            orden: 0,
+            tipo,
+            unidad,
+            meta_cantidad: metaCantidad
         })
     });
     const data = await res.json();
     if (!res.ok) return { error: 'Error al crear hábito.' };
     return { habito: data[0] };
 }
-async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color, recordatorio = null) {
+async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color, recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
         method: 'PATCH',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ nombre, emoji, meta_semanal: metaSemanal, color, recordatorio })
+        body: JSON.stringify({ nombre, emoji, meta_semanal: metaSemanal, color, recordatorio, tipo, unidad, meta_cantidad: metaCantidad })
     });
     const data = await res.json();
     if (!res.ok) return { error: 'Error al editar hábito.' };
@@ -132,6 +135,39 @@ async function desmarcarHabitoSupabase(habitoId, fecha) {
     );
     return res.ok;
 }
+
+async function guardarCantidadSupabase(habitoId, usuarioId, fecha, cantidad) {
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fecha}`,
+        { headers }
+    );
+    const data = await res.json();
+
+    if (data.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fecha}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ cantidad })
+        });
+    } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, cantidad })
+        });
+    }
+}
+
+async function obtenerCantidadDiaSupabase(habitoId, fecha) {
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fecha}&select=cantidad`,
+        { headers }
+    );
+    const data = await res.json();
+    return data.length > 0 ? (data[0].cantidad || 0) : 0;
+}
+
+    
 
 async function guardarNotaSupabase(habitoId, usuarioId, fecha, nota) {
     // Intentamos actualizar primero

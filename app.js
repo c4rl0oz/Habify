@@ -311,9 +311,15 @@ async function cargarDatosUsuario() {
             fechaCreacion: h.fecha_creacion,
             recordatorio: h.recordatorio || null,
             orden: h.orden ?? 0,
+            tipo: h.tipo || 'check',
+            unidad: h.unidad || null,
+            metaCantidad: h.meta_cantidad || null,
             registros: registrosDB
                 .filter(r => r.habito_id === h.id)
-                .map(r => r.fecha)
+                .map(r => r.fecha),
+            cantidades: registrosDB
+                .filter(r => r.habito_id === h.id && r.cantidad)
+                .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {})
         }));
 
         await cargarTodasLasNotas();
@@ -556,14 +562,28 @@ function renderizarHabitos() {
                     <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
                 </div>
             </div>
-            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoDia('${habito.id}', '${fechaReferencia}')"
+            ${habito.tipo === 'contador'
+                ? `<div class="flex items-center gap-1 flex-shrink-0">
+                    <button onclick="event.stopPropagation(); ajustarContador('${habito.id}', '${fechaReferencia}', -1)"
+                        class="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                        style="background:${color}22; border:1.5px solid ${color}40; color:${color}; font-size:18px; font-weight:700; line-height:1;">−</button>
+                    <div class="flex flex-col items-center min-w-[36px]">
+                        <span data-cantidad-id="${habito.id}" class="text-sm font-black" style="color:${color}">${habito.cantidades?.[fechaReferencia] || 0}</span>
+                        <span class="text-[9px] font-bold text-slate-400">${habito.unidad || ''}</span>
+                    </div>
+                    <button onclick="event.stopPropagation(); ajustarContador('${habito.id}', '${fechaReferencia}', 1)"
+                        class="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                        style="background:${color}; color:white; font-size:18px; font-weight:700; line-height:1;">+</button>
+                   </div>`
+                : `<button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoDia('${habito.id}', '${fechaReferencia}')"
                     class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
                     style="background:${yaHecho ? color : 'transparent'}; border:2px solid ${yaHecho ? color : '#e2e8f0'}">
-                ${yaHecho
-                    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-                    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-                }
-            </button>
+                    ${yaHecho
+                        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+                    }
+                   </button>`
+            }
         </div>
     </div>
 `;
@@ -593,6 +613,71 @@ function renderizarHabitos() {
 // TOGGLE HÁBITO HOY
 // Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
 // ============================================================
+async function ajustarContadorDetalle(delta) {
+    if (!habitoDetalleActual) return;
+    const habito = habitoDetalleActual;
+    const fechaStr = hoyComoTexto();
+
+    await ajustarContador(habito.id, fechaStr, delta);
+
+    // Actualizar UI del detalle
+    const cantidadHoy = habito.cantidades?.[fechaStr] || 0;
+    const meta = habito.metaCantidad || 1;
+    const color = habito.color || '#6C63FF';
+    const porcentajeCantidad = Math.min(Math.round((cantidadHoy / meta) * 100), 100);
+
+    const numEl = document.getElementById('detalle-cantidad-num');
+    if (numEl) numEl.innerText = cantidadHoy;
+
+    const barraEl = document.querySelector('#detalle-contador .h-full');
+    if (barraEl) barraEl.style.width = `${porcentajeCantidad}%`;
+
+    const labelEl = document.querySelector('#detalle-contador .flex.items-center.justify-between p:last-child');
+    if (labelEl) labelEl.innerText = `${cantidadHoy} / ${meta} ${habito.unidad || ''}`;
+
+    // Actualizar stats de racha
+    document.getElementById('stat-racha-actual').innerText = calcularRacha(habito);
+    document.getElementById('stat-total').innerText = habito.registros.length;
+}
+
+async function ajustarContador(habitoId, fechaStr, delta) {
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (!habito || !usuarioActual) return;
+
+    const cantidadActual = habito.cantidades?.[fechaStr] || 0;
+    const nuevaCantidad = Math.max(0, cantidadActual + delta);
+    
+    if (!habito.cantidades) habito.cantidades = {};
+    habito.cantidades[fechaStr] = nuevaCantidad;
+
+    // Si llega a la meta, marcar como completado
+    const metaCantidad = habito.metaCantidad || 1;
+    const yaCompletado = habito.registros.includes(fechaStr);
+
+    if (nuevaCantidad >= metaCantidad && !yaCompletado) {
+        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        habito.registros.push(fechaStr);
+        if (navigator.vibrate) navigator.vibrate(30);
+    } else if (nuevaCantidad < metaCantidad && yaCompletado) {
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
+    }
+
+    // Guardar cantidad en Supabase
+    await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
+
+    // Actualizar solo el contador en el DOM sin re-renderizar todo
+    const cantidadEl = document.querySelector(`[data-cantidad-id="${habitoId}"]`);
+    if (cantidadEl) {
+        cantidadEl.innerText = nuevaCantidad;
+        cantidadEl.style.color = nuevaCantidad >= metaCantidad ? habito.color : habito.color;
+    }
+
+    actualizarResumenHoy();
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
+    verificarNuevosLogros();
+}
 async function toggleHabitoDia(habitoId, fechaStr) {
     const habito = misHabitos.find(h => h.id === habitoId);
     if (!habito || !usuarioActual) return;
@@ -644,6 +729,19 @@ function abrirModal() {
     document.getElementById('emoji-preview').innerText = '🏃';
     document.getElementById('emoji-nombre-preview').innerText = 'Correr';
     document.getElementById('habito-color').value = '#6C63FF';
+    // Reset tipo
+    document.getElementById('habito-tipo').value = 'check';
+    document.getElementById('config-contador').classList.add('hidden');
+    document.getElementById('habito-meta-cantidad').value = '';
+    document.getElementById('habito-unidad').value = '';
+    const btnCheck = document.getElementById('tipo-check-btn');
+    const btnContador = document.getElementById('tipo-contador-btn');
+    btnCheck.style.background = '#6C63FF';
+    btnCheck.style.color = 'white';
+    btnCheck.style.borderColor = '#6C63FF';
+    btnContador.style.background = 'transparent';
+    btnContador.style.color = '';
+    btnContador.style.borderColor = '';
     // Reset recordatorio
     recordatorioActivo = false;
     document.getElementById('toggle-recordatorio').style.background = '';
@@ -1615,6 +1713,33 @@ function activarDragAndDrop() {
         }, { passive: true });
     });
 }
+
+function seleccionarTipoHabito(tipo) {
+    document.getElementById('habito-tipo').value = tipo;
+    const btnCheck = document.getElementById('tipo-check-btn');
+    const btnContador = document.getElementById('tipo-contador-btn');
+    const configContador = document.getElementById('config-contador');
+    const color = document.getElementById('habito-color').value || '#6C63FF';
+
+    if (tipo === 'check') {
+        btnCheck.style.background = color;
+        btnCheck.style.color = 'white';
+        btnCheck.style.borderColor = color;
+        btnContador.style.background = 'transparent';
+        btnContador.style.color = '';
+        btnContador.style.borderColor = '';
+        configContador.classList.add('hidden');
+    } else {
+        btnContador.style.background = color;
+        btnContador.style.color = 'white';
+        btnContador.style.borderColor = color;
+        btnCheck.style.background = 'transparent';
+        btnCheck.style.color = '';
+        btnCheck.style.borderColor = '';
+        configContador.classList.remove('hidden');
+    }
+}
+
 function actualizarContador(input) {
     document.getElementById('contador-caracteres').innerText = `${input.value.length}/30`;
 }
@@ -1781,8 +1906,19 @@ async function crearHabitoNuevo() {
     btn.disabled = true;
 
     const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
+    const tipo = document.getElementById('habito-tipo').value;
+    const unidad = tipo === 'contador' ? document.getElementById('habito-unidad').value.trim() : null;
+    const metaCantidad = tipo === 'contador' ? parseInt(document.getElementById('habito-meta-cantidad').value) : null;
+
+    if (tipo === 'contador' && (!metaCantidad || !unidad)) {
+        mostrarError('Ingresa la meta diaria y la unidad del contador.');
+        btn.innerText = 'Crear hábito →';
+        btn.disabled = false;
+        return;
+    }
+
     const resultado = await crearHabitoSupabase(
-        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color, recordatorio
+        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color, recordatorio, tipo, unidad, metaCantidad
     );
 
     if (resultado.error) {
@@ -1801,7 +1937,11 @@ async function crearHabitoNuevo() {
         fechaCreacion: resultado.habito.fecha_creacion,
         recordatorio: resultado.habito.recordatorio || null,
         orden: misHabitos.length,
-        registros: []
+        tipo: resultado.habito.tipo || 'check',
+        unidad: resultado.habito.unidad || null,
+        metaCantidad: resultado.habito.meta_cantidad || null,
+        registros: [],
+        cantidades: {}
     };
 
     misHabitos.push(nuevoHabito);
@@ -1849,13 +1989,57 @@ function abrirDetalleHabito(id) {
     const yaHecho = completadoHoy(habito);
     const btnCheck = document.getElementById('detalle-btn-check');
     const esModoOscuro = document.documentElement.classList.contains('dark');
-    btnCheck.style.background = yaHecho ? (esModoOscuro ? '#ffffff15' : '#e2e8f0') : color;
-    btnCheck.style.color = yaHecho ? (esModoOscuro ? '#ffffff60' : '#94a3b8') : 'white';
-    btnCheck.style.boxShadow = yaHecho ? 'none' : `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
-    btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
+
+    if (habito.tipo === 'contador') {
+        // Ocultar botón de check — se completa automáticamente con el contador
+        btnCheck.style.display = 'none';
+    } else {
+        btnCheck.style.display = '';
+        btnCheck.style.background = yaHecho ? (esModoOscuro ? '#ffffff15' : '#e2e8f0') : color;
+        btnCheck.style.color = yaHecho ? (esModoOscuro ? '#ffffff60' : '#94a3b8') : 'white';
+        btnCheck.style.boxShadow = yaHecho ? 'none' : `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
+        btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
+    }
 
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
+
+    // Mostrar contador en detalle si aplica
+    const contadorDetalle = document.getElementById('detalle-contador');
+    if (contadorDetalle) {
+        if (habito.tipo === 'contador') {
+            const hoy = hoyComoTexto();
+            const cantidadHoy = habito.cantidades?.[hoy] || 0;
+            const meta = habito.metaCantidad || 1;
+            const porcentajeCantidad = Math.min(Math.round((cantidadHoy / meta) * 100), 100);
+            contadorDetalle.classList.remove('hidden');
+            contadorDetalle.innerHTML = `
+                <div class="p-5 rounded-[28px] space-y-4 border border-transparent dark:border-white/10 card-shadow" style="background:${color}12;">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Progreso de hoy</p>
+                        <p class="text-xs font-bold" style="color:${color}">${cantidadHoy} / ${meta} ${habito.unidad || ''}</p>
+                    </div>
+                    <div class="h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-500" style="width:${porcentajeCantidad}%; background:${color}"></div>
+                    </div>
+                    <div class="flex items-center justify-center gap-6">
+                        <button onclick="ajustarContadorDetalle(-1)"
+                            class="w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all text-2xl font-black"
+                            style="background:${color}22; border:2px solid ${color}40; color:${color};">−</button>
+                        <div class="text-center">
+                            <p id="detalle-cantidad-num" class="text-4xl font-black" style="color:${color}">${cantidadHoy}</p>
+                            <p class="text-xs font-bold text-slate-400 mt-1">${habito.unidad || 'unidades'}</p>
+                        </div>
+                        <button onclick="ajustarContadorDetalle(1)"
+                            class="w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all text-2xl font-black text-white"
+                            style="background:${color};">+</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            contadorDetalle.classList.add('hidden');
+        }
+    }
 
     abrirPantallaAnimada('pantalla-detalle-habito');
 }
