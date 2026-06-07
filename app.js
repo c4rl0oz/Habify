@@ -1050,6 +1050,8 @@ function irAPantalla(pantalla) {
         resumen.classList.add('hidden');
         if (tira) tira.classList.add('hidden');
         generarCalendarioMensual();
+        offsetSemanaResumen = 0;
+        generarResumenSemanal();
     } else if (pantalla === 'estadisticas') {
         estadisticas.classList.remove('hidden');
         resumen.classList.add('hidden');
@@ -1360,6 +1362,12 @@ function toggleModoOscuro() {
 
     animarCargaInicial = false;
     renderizarHabitos();
+
+    const calendarioVisible = !document.getElementById('pantalla-calendario').classList.contains('hidden');
+    if (calendarioVisible) {
+        generarCalendarioMensual();
+        generarResumenSemanal();
+    }
 }
 const catActiva = document.querySelector('.cat-emoji-btn');
 if (catActiva && !document.getElementById('pantalla-crear-habito').classList.contains('hidden')) {
@@ -2841,6 +2849,157 @@ function cerrarDiaPerfecto() {
     }, 350);
 }
 
+// ============================================================
+// RESUMEN SEMANAL INTELIGENTE
+// ============================================================
+let offsetSemanaResumen = 0; // 0 = semana actual, -1 = semana anterior, etc.
+
+function navegarResumenSemanal(dir) {
+    const nuevoOffset = offsetSemanaResumen + dir;
+    if (nuevoOffset > 0) return;
+    offsetSemanaResumen = nuevoOffset;
+    generarResumenSemanal();
+}
+
+function generarResumenSemanal() {
+    const hoy = new Date();
+    const diaSemana = hoy.getDay();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - ((diaSemana + 6) % 7) + (offsetSemanaResumen * 7));
+    lunes.setHours(0, 0, 0, 0);
+
+    const domingo = new Date(lunes);
+    domingo.setDate(lunes.getDate() + 6);
+
+    // Rango de fechas de la semana
+    const fechasDias = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(lunes);
+        d.setDate(lunes.getDate() + i);
+        fechasDias.push(fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
+
+    // Header — rango legible
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const mismoMes = lunes.getMonth() === domingo.getMonth();
+    const rango = mismoMes
+        ? `${lunes.getDate()} – ${domingo.getDate()} de ${meses[domingo.getMonth()]}`
+        : `${lunes.getDate()} ${meses[lunes.getMonth()]} – ${domingo.getDate()} ${meses[domingo.getMonth()]}`;
+    document.getElementById('resumen-semana-rango').innerText = rango;
+
+    // Botón siguiente — solo activo si no estamos en semana actual
+    const btnSig = document.getElementById('resumen-btn-siguiente');
+    if (offsetSemanaResumen < 0) {
+        btnSig.disabled = false;
+        btnSig.classList.remove('opacity-35');
+    } else {
+        btnSig.disabled = true;
+        btnSig.classList.add('opacity-35');
+    }
+
+    // Solo contar días que ya ocurrieron
+    const hoyStr = hoyComoTexto();
+    const diasPasados = fechasDias.filter(f => f <= hoyStr);
+
+    // Métricas globales
+    let totalPosible = 0;
+    let totalHechos = 0;
+    const conteoPorDia = {};
+
+    diasPasados.forEach(fecha => {
+        const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
+        totalPosible += habitosDelDia.length;
+        const hechos = habitosDelDia.filter(h => h.registros.includes(fecha)).length;
+        totalHechos += hechos;
+        conteoPorDia[fecha] = hechos;
+    });
+
+    const porcentaje = totalPosible === 0 ? 0 : Math.round((totalHechos / totalPosible) * 100);
+    document.getElementById('resumen-porcentaje').innerText = `${porcentaje}%`;
+    document.getElementById('resumen-fraccion').innerText = `${totalHechos} de ${totalPosible} posibles`;
+
+    // Mejor día
+    let mejorFecha = null;
+    let mejorCount = 0;
+    Object.entries(conteoPorDia).forEach(([fecha, count]) => {
+        if (count > mejorCount) { mejorCount = count; mejorFecha = fecha; }
+    });
+    const diasNombre = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    if (mejorFecha) {
+        const d = new Date(mejorFecha + 'T00:00:00');
+        document.getElementById('resumen-mejor-dia').innerText = diasNombre[d.getDay()];
+        document.getElementById('resumen-mejor-dia-count').innerText = `${mejorCount} hábitos completados`;
+    } else {
+        document.getElementById('resumen-mejor-dia').innerText = '—';
+        document.getElementById('resumen-mejor-dia-count').innerText = 'sin datos aún';
+    }
+
+    // Lista por hábito
+    const lista = document.getElementById('resumen-lista-habitos');
+    lista.innerHTML = '';
+    const esDark = document.documentElement.classList.contains('dark');
+
+    misHabitos.forEach(habito => {
+        const color = habito.color || '#6C63FF';
+        const diasConHabito = diasPasados.filter(f => habito.fechaCreacion <= f);
+        if (diasConHabito.length === 0) return;
+        const hechos = diasConHabito.filter(f => habito.registros.includes(f)).length;
+        const pct = Math.round((hechos / diasConHabito.length) * 100);
+
+        lista.innerHTML += `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:18px; flex-shrink:0;">${habito.emoji}</span>
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <p style="font-size:12px; font-weight:700; color:${esDark ? 'white' : '#0f0f0f'}; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${habito.nombre}</p>
+                        <p style="font-size:12px; font-weight:700; color:${color}; margin:0; flex-shrink:0;">${hechos}/${diasConHabito.length}</p>
+                    </div>
+                    <div style="height:5px; background:${esDark ? '#2a2a2a' : '#f1f5f9'}; border-radius:99px; overflow:hidden;">
+                        <div style="width:${pct}%; height:100%; background:${color}; border-radius:99px; transition:width 0.4s ease;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    // Insights
+    const insights = document.getElementById('resumen-insights');
+    insights.innerHTML = '';
+    if (misHabitos.length === 0 || diasPasados.length === 0) return;
+
+    // Mejor hábito
+    let mejorHabito = null, mejorPct = -1;
+    // Peor hábito
+    let peorHabito = null, peorPct = 101;
+
+    misHabitos.forEach(habito => {
+        const diasConHabito = diasPasados.filter(f => habito.fechaCreacion <= f);
+        if (diasConHabito.length === 0) return;
+        const hechos = diasConHabito.filter(f => habito.registros.includes(f)).length;
+        const pct = hechos / diasConHabito.length;
+        if (pct > mejorPct) { mejorPct = pct; mejorHabito = habito; }
+        if (pct < peorPct) { peorPct = pct; peorHabito = habito; }
+    });
+
+    if (mejorHabito) {
+        insights.innerHTML += `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(108,99,255,0.06); border-radius:12px; border:1px solid rgba(108,99,255,0.15);">
+                <span style="font-size:15px; flex-shrink:0;">⭐</span>
+                <p style="font-size:12px; font-weight:600; color:${esDark ? 'rgba(255,255,255,0.85)' : '#0f0f0f'}; margin:0; line-height:1.4;">${mejorHabito.emoji} <strong>${mejorHabito.nombre}</strong> fue tu hábito más constante esta semana</p>
+            </div>
+        `;
+    }
+    if (peorHabito && peorHabito.id !== mejorHabito?.id) {
+        const diasConPeor = diasPasados.filter(f => peorHabito.fechaCreacion <= f);
+        const hechosPeor = diasConPeor.filter(f => peorHabito.registros.includes(f)).length;
+        insights.innerHTML += `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(239,68,68,0.05); border-radius:12px; border:1px solid rgba(239,68,68,0.15);">
+                <span style="font-size:15px; flex-shrink:0;">⚠️</span>
+                <p style="font-size:12px; font-weight:600; color:${esDark ? 'rgba(255,255,255,0.85)' : '#0f0f0f'}; margin:0; line-height:1.4;">${peorHabito.emoji} <strong>${peorHabito.nombre}</strong> necesita más atención — solo ${hechosPeor} de ${diasConPeor.length} días</p>
+            </div>
+        `;
+    }
+}
 // ============================================================
 // ARRANCAR
 // ============================================================
