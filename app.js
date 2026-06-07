@@ -2286,6 +2286,13 @@ function abrirEditarHabito() {
         document.getElementById('recordatorio-minuto-display').innerText = '00';
     }
 
+    // Precargar tipo
+    seleccionarTipoHabito(habito.tipo || 'check');
+    if (habito.tipo === 'contador') {
+        if (habito.metaCantidad) document.getElementById('habito-meta-cantidad').value = habito.metaCantidad;
+        if (habito.unidad) document.getElementById('habito-unidad').value = habito.unidad;
+    }
+
     // Cambiar título y botón
     document.querySelector('#pantalla-crear-habito h2').innerText = 'Editar hábito';
     const btnCrear = document.getElementById('btn-crear-habito');
@@ -2317,6 +2324,9 @@ async function guardarEdicionHabito() {
     const emoji = document.getElementById('habito-emoji').value;
     const color = document.getElementById('habito-color').value;
     const meta = parseInt(document.getElementById('habito-meta').value);
+    const tipo = document.getElementById('habito-tipo').value;
+    const unidad = document.getElementById('habito-unidad')?.value.trim() || null;
+    const metaCantidad = tipo === 'contador' ? parseInt(document.getElementById('habito-meta-cantidad')?.value) || null : null;
 
     if (!nombre) {
         document.getElementById('habito-nombre').focus();
@@ -2330,7 +2340,7 @@ async function guardarEdicionHabito() {
     btn.disabled = true;
 
     const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
-    const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio);
+    const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio, tipo, unidad, metaCantidad);
 
     if (resultado.error) {
         alert('Error al guardar. Intenta de nuevo.');
@@ -2347,6 +2357,9 @@ async function guardarEdicionHabito() {
         habito.color = color;
         habito.metaSemanal = meta;
         habito.recordatorio = recordatorio;
+        habito.tipo = tipo;
+        habito.unidad = unidad;
+        habito.metaCantidad = metaCantidad;
         habitoDetalleActual = habito;
     }
 
