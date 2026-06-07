@@ -320,7 +320,12 @@ async function cargarDatosUsuario() {
                 .map(r => r.fecha),
             cantidades: registrosDB
                 .filter(r => r.habito_id === h.id && r.cantidad != null)
-                .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {})
+                .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {}),
+            horas: Object.fromEntries(
+                registrosDB
+                    .filter(r => r.habito_id === h.id && r.hora)
+                    .map(r => [r.fecha, r.hora])
+            )
         }));
 
         await cargarTodasLasNotas();
@@ -371,6 +376,37 @@ function abrirPerfil() {
     }, 0);
     document.getElementById('perfil-racha-max').innerText =
         rachaMaxGlobal > 0 ? `🔥 ${rachaMaxGlobal} días` : '—';
+
+    // Hora pico — analizar registros con hora guardada
+    const horaPicoEl = document.getElementById('perfil-hora-pico');
+    const conteoFranjas = { madrugada: 0, mañana: 0, tarde: 0, noche: 0 };
+    let totalConHora = 0;
+
+    misHabitos.forEach(habito => {
+        if (!habito.horas) return;
+        Object.values(habito.horas).forEach(hora => {
+            if (!hora) return;
+            const h = parseInt(hora.split(':')[0]);
+            totalConHora++;
+            if (h >= 5 && h < 12) conteoFranjas.mañana++;
+            else if (h >= 12 && h < 19) conteoFranjas.tarde++;
+            else if (h >= 19 && h < 24) conteoFranjas.noche++;
+            else conteoFranjas.madrugada++;
+        });
+    });
+
+    if (totalConHora < 3) {
+        horaPicoEl.innerText = 'Pocos datos aún';
+    } else {
+        const mejor = Object.entries(conteoFranjas).sort((a,b) => b[1] - a[1])[0][0];
+        const etiquetas = {
+            mañana: '🌅 Mañanas',
+            tarde: '☀️ Tardes',
+            noche: '🌙 Noches',
+            madrugada: '🌃 Madrugada'
+        };
+        horaPicoEl.innerText = etiquetas[mejor];
+    }
 
     // Renderizar logros
     const contenedorLogros = document.getElementById('perfil-logros');
