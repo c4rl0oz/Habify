@@ -92,6 +92,13 @@ async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color,
     if (!res.ok) return { error: 'Error al editar hábito.' };
     return { habito: data[0] };
 }
+async function togglePinSupabase(habitoId, pinneado) {
+    await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ pinneado })
+    });
+}
 async function actualizarOrdenSupabase(habitoId, orden) {
     await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
         method: 'PATCH',
@@ -167,7 +174,7 @@ async function obtenerCantidadDiaSupabase(habitoId, fecha) {
     return data.length > 0 ? (data[0].cantidad || 0) : 0;
 }
 
-    
+
 
 async function guardarNotaSupabase(habitoId, usuarioId, fecha, nota) {
     // Intentamos actualizar primero

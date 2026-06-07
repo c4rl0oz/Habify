@@ -314,6 +314,7 @@ async function cargarDatosUsuario() {
             tipo: h.tipo || 'check',
             unidad: h.unidad || null,
             metaCantidad: h.meta_cantidad || null,
+            pinneado: h.pinneado || false,
             registros: registrosDB
                 .filter(r => r.habito_id === h.id && (h.tipo !== 'contador' || r.cantidad >= (h.meta_cantidad || 1)))
                 .map(r => r.fecha),
@@ -525,9 +526,22 @@ function renderizarHabitos() {
     const fechaReferencia = diaSeleccionadoTira || hoyComoTexto();
     const esHoyReferencia = fechaReferencia === hoyComoTexto();
 
-    misHabitos.forEach(habito => {
-        // Solo mostrar hábitos que existían en la fecha seleccionada
-        if (habito.fechaCreacion > fechaReferencia) return;
+    // Ordenar: pinneados → no completados → completados (dentro de cada grupo, orden de creación)
+    const habitosOrdenados = [...misHabitos]
+        .filter(h => h.fechaCreacion <= fechaReferencia)
+        .sort((a, b) => {
+            const aPin = a.pinneado ? 0 : 1;
+            const bPin = b.pinneado ? 0 : 1;
+            if (aPin !== bPin) return aPin - bPin;
+
+            const aHecho = a.registros.includes(fechaReferencia) ? 1 : 0;
+            const bHecho = b.registros.includes(fechaReferencia) ? 1 : 0;
+            if (aHecho !== bHecho) return aHecho - bHecho;
+
+            return new Date(a.fechaCreacion) - new Date(b.fechaCreacion);
+        });
+
+    habitosOrdenados.forEach(habito => {
 
         const completados = completadosEstaSemana(habito);
         const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
@@ -645,7 +659,27 @@ async function ajustarContadorDetalle(delta) {
     inicializarTiraDias();
     mostrarResumenDiaTira(hoyComoTexto());
 }
+async function togglePin(habitoId) {
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (!habito) return;
 
+    habito.pinneado = !habito.pinneado;
+    await togglePinSupabase(habitoId, habito.pinneado);
+
+    if (habitoDetalleActual?.id === habitoId) {
+        habitoDetalleActual.pinneado = habito.pinneado;
+        // Actualizar botón en detalle
+        const btnPin = document.getElementById('detalle-btn-pin');
+        if (btnPin) {
+            btnPin.style.background = habito.pinneado ? '#6C63FF' : '';
+            btnPin.style.color = habito.pinneado ? 'white' : '';
+            btnPin.innerText = habito.pinneado ? '📌 Pinneado' : '📌 Pinnear';
+        }
+    }
+
+    animarCargaInicial = false;
+    renderizarHabitos();
+}
 async function ajustarContador(habitoId, fechaStr, delta) {
     const habito = misHabitos.find(h => h.id === habitoId);
     if (!habito || !usuarioActual) return;
@@ -2012,6 +2046,7 @@ async function crearHabitoNuevo() {
         tipo: resultado.habito.tipo || 'check',
         unidad: resultado.habito.unidad || null,
         metaCantidad: resultado.habito.meta_cantidad || null,
+        pinneado: false,
         registros: [],
         cantidades: {}
     };
@@ -2072,7 +2107,12 @@ function abrirDetalleHabito(id) {
         btnCheck.style.boxShadow = yaHecho ? 'none' : `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
         btnCheck.innerText = yaHecho ? '✓ Completado hoy' : 'Marcar como hecho hoy ✓';
     }
-
+    // Estado del botón pin
+    const btnPin = document.getElementById('detalle-btn-pin');
+    if (btnPin) {
+        btnPin.style.background = habito.pinneado ? '#6C63FF' : '';
+        btnPin.style.color = habito.pinneado ? 'white' : '';
+    }
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
 
