@@ -289,7 +289,7 @@
             </div>
 
             <!-- Resumen Semanal -->
-            <div id="resumen-semanal-card" class="bg-white dark:bg-[#1a1a1a] rounded-[24px] border border-slate-200/60 dark:border-white/10 overflow-hidden card-shadow">
+            <div id="resumen-semanal-card" class="bg-slate-100/70 dark:bg-[#1a1a1a] rounded-[24px] border border-transparent dark:border-white/10 overflow-hidden card-shadow">
                 
                 <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/10">
                     <div>
@@ -307,12 +307,12 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/10">
-                    <div class="bg-slate-50 dark:bg-[#0f0f0f] rounded-2xl p-3">
+                    <div class="bg-white/60 dark:bg-[#0f0f0f] rounded-2xl p-3">
                         <p class="text-[11px] font-bold text-slate-400 mb-1">Completados</p>
                         <p id="resumen-porcentaje" class="text-2xl font-black" style="color:#6C63FF">0%</p>
                         <p id="resumen-fraccion" class="text-[11px] text-slate-400 mt-1">0 de 0 posibles</p>
                     </div>
-                    <div class="bg-slate-50 dark:bg-[#0f0f0f] rounded-2xl p-3">
+                    <div class="bg-white/60 dark:bg-[#0f0f0f] rounded-2xl p-3">
                         <p class="text-[11px] font-bold text-slate-400 mb-1">Mejor día</p>
                         <p id="resumen-mejor-dia" class="text-2xl font-black" style="color:#6C63FF">—</p>
                         <p id="resumen-mejor-dia-count" class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
@@ -365,6 +365,36 @@
     <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
         <canvas id="grafica-mensual" height="160"></canvas>
+    </div>
+
+    <!-- Comparativa semanal -->
+    <div id="comparativa-semanal-card" class="bg-slate-100/70 dark:bg-[#1a1a1a] rounded-[24px] border border-transparent dark:border-white/10 overflow-hidden card-shadow">
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-white/10">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Esta semana vs anterior</p>
+            <p id="comparativa-rango" class="text-sm font-black text-black dark:text-white mt-0.5"></p>
+        </div>
+        <div class="grid grid-cols-2 border-b border-slate-200/60 dark:border-white/10">
+            <div class="px-5 py-4">
+                <p class="text-[11px] font-bold text-slate-400 mb-1">Esta semana</p>
+                <p id="comparativa-actual" class="text-3xl font-black" style="color:#6C63FF">0</p>
+                <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
+            </div>
+            <div class="px-5 py-4">
+                <p class="text-[11px] font-bold text-slate-400 mb-1">Semana anterior</p>
+                <p id="comparativa-anterior" class="text-3xl font-black text-slate-400">0</p>
+                <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
+            </div>
+        </div>
+        <div class="px-5 py-4 flex items-center gap-3">
+            <div id="comparativa-icono" class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"></div>
+            <div>
+                <p id="comparativa-diff" class="text-lg font-black"></p>
+                <p id="comparativa-pct" class="text-[11px] font-bold text-slate-400 mt-0.5"></p>
+            </div>
+        </div>
+        <div id="comparativa-mensaje" class="mx-5 mb-4 px-4 py-2.5 rounded-xl">
+            <p id="comparativa-mensaje-texto" class="text-xs font-bold leading-relaxed"></p>
+        </div>
     </div>
 
     <!-- Rachas por hábito -->

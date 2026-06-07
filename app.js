@@ -1095,6 +1095,7 @@ function generarEstadisticas() {
 
     // --- RACHAS (siempre del momento actual) ---
     generarListaRachas();
+    generarComparativaSemanal();
 }
 
 function generarGraficaSemanal(fechaRef) {
@@ -2998,6 +2999,95 @@ function generarResumenSemanal() {
                 <p style="font-size:12px; font-weight:600; color:${esDark ? 'rgba(255,255,255,0.85)' : '#0f0f0f'}; margin:0; line-height:1.4;">${peorHabito.emoji} <strong>${peorHabito.nombre}</strong> necesita más atención — solo ${hechosPeor} de ${diasConPeor.length} días</p>
             </div>
         `;
+    }
+}
+
+// ============================================================
+// COMPARATIVA SEMANAL
+// ============================================================
+function generarComparativaSemanal() {
+    const hoy = new Date();
+    const diaSemana = hoy.getDay();
+
+    // Semana actual — lunes a hoy
+    const lunesActual = new Date(hoy);
+    lunesActual.setDate(hoy.getDate() - ((diaSemana + 6) % 7));
+    lunesActual.setHours(0, 0, 0, 0);
+
+    const domingoActual = new Date(lunesActual);
+    domingoActual.setDate(lunesActual.getDate() + 6);
+
+    // Semana anterior — lunes a domingo previo
+    const lunesAnterior = new Date(lunesActual);
+    lunesAnterior.setDate(lunesActual.getDate() - 7);
+    const domingoAnterior = new Date(lunesActual);
+    domingoAnterior.setDate(lunesActual.getDate() - 1);
+
+    const hoyStr = hoyComoTexto();
+
+    function contarSemana(inicio, fin) {
+        let total = 0;
+        const d = new Date(inicio);
+        while (d <= fin) {
+            const fechaStr = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
+            if (fechaStr > hoyStr) break;
+            misHabitos.forEach(h => {
+                if (h.registros.includes(fechaStr)) total++;
+            });
+            d.setDate(d.getDate() + 1);
+        }
+        return total;
+    }
+
+    const actual = contarSemana(lunesActual, domingoActual);
+    const anterior = contarSemana(lunesAnterior, domingoAnterior);
+    const diff = actual - anterior;
+    const pct = anterior === 0 ? 0 : Math.round(Math.abs(diff / anterior) * 100);
+    const sube = diff >= 0;
+
+    // Rango
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const mismoMes = lunesActual.getMonth() === domingoActual.getMonth();
+    const rango = mismoMes
+        ? `${lunesActual.getDate()} – ${domingoActual.getDate()} de ${meses[domingoActual.getMonth()]}`
+        : `${lunesActual.getDate()} ${meses[lunesActual.getMonth()]} – ${domingoActual.getDate()} ${meses[domingoActual.getMonth()]}`;
+
+    document.getElementById('comparativa-rango').innerText = rango;
+    document.getElementById('comparativa-actual').innerText = actual;
+    document.getElementById('comparativa-anterior').innerText = anterior;
+
+    const colorSube = '#16a34a';
+    const colorBaja = '#dc2626';
+    const color = sube ? colorSube : colorBaja;
+
+    const icono = document.getElementById('comparativa-icono');
+    icono.style.background = sube ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.10)';
+    icono.innerHTML = sube
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colorSube}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`
+        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colorBaja}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 9 12 15 6 9"/></svg>`;
+
+    const diffEl = document.getElementById('comparativa-diff');
+    diffEl.style.color = color;
+    diffEl.innerText = diff === 0 ? 'Sin cambio' : `${sube ? '+' : ''}${diff} hábitos`;
+
+    document.getElementById('comparativa-pct').innerText = anterior === 0
+        ? 'Primera semana con datos'
+        : `${sube ? '+' : '-'}${pct}% respecto a la semana pasada`;
+
+    const msgBox = document.getElementById('comparativa-mensaje');
+    const msgTexto = document.getElementById('comparativa-mensaje-texto');
+    if (sube) {
+        msgBox.style.background = 'rgba(34,197,94,0.06)';
+        msgBox.style.border = '0.5px solid rgba(34,197,94,0.2)';
+        msgTexto.style.color = '#15803d';
+        msgTexto.innerText = diff === 0
+            ? 'Mismo ritmo que la semana pasada. ¡Consistencia es clave! 💪'
+            : '¡Vas mejor que la semana pasada! Mantén el ritmo 💪';
+    } else {
+        msgBox.style.background = 'rgba(239,68,68,0.05)';
+        msgBox.style.border = '0.5px solid rgba(239,68,68,0.15)';
+        msgTexto.style.color = '#b91c1c';
+        msgTexto.innerText = 'Esta semana va un poco más lento. ¡Aún estás a tiempo de revertirlo! 🔥';
     }
 }
 // ============================================================
