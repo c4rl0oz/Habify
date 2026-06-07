@@ -54,13 +54,13 @@ async function loginUsuarioSupabase(correo, password) {
 
 async function obtenerHabitosSupabase(usuarioId) {
     const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/habitos?usuario_id=eq.${usuarioId}&select=*&order=created_at.asc`,
+        `${SUPABASE_URL}/rest/v1/habitos?usuario_id=eq.${usuarioId}&select=*&order=orden.asc,created_at.asc`,
         { headers }
     );
     return await res.json();
 }
 
-async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF') {
+async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF', recordatorio = null) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
@@ -70,14 +70,32 @@ async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaC
             emoji,
             meta_semanal: metaSemanal,
             fecha_creacion: fechaCreacion,
-            color
+            color,
+            recordatorio,
+            orden: 0
         })
     });
     const data = await res.json();
     if (!res.ok) return { error: 'Error al crear hábito.' };
     return { habito: data[0] };
 }
-
+async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color, recordatorio = null) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ nombre, emoji, meta_semanal: metaSemanal, color, recordatorio })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: 'Error al editar hábito.' };
+    return { habito: data[0] };
+}
+async function actualizarOrdenSupabase(habitoId, orden) {
+    await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ orden })
+    });
+}
 async function eliminarHabitoSupabase(habitoId) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
         method: 'DELETE',

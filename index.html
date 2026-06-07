@@ -36,16 +36,10 @@
     .pantalla-slide-up {
         animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
     }
-    .pantalla-slide-down {
-        animation: slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-    }
-    @keyframes slideUp {
-        from { transform: translateY(100%); opacity: 0.6; }
-        to   { transform: translateY(0);    opacity: 1; }
-    }
-    @keyframes slideDown {
-        from { transform: translateY(0);    opacity: 1; }
-        to   { transform: translateY(100%); opacity: 0.6; }
+    .pantalla-cerrando {
+        transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease;
+        transform: translateY(110%) !important;
+        opacity: 0 !important;
     }
     .fade-in-up {
         opacity: 0;
@@ -63,6 +57,15 @@
     }
     .check-pop {
         animation: checkPop 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .drag-over {
+        border-color: rgba(108,99,255,0.5) !important;
+        box-shadow: 0 0 0 2px rgba(108,99,255,0.3) !important;
+        transform: scale(1.01);
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-100%); opacity: 0; }
+        to   { transform: translateY(0);     opacity: 1; }
     }
     #slider-meta::-webkit-slider-thumb {
         -webkit-appearance: none;
@@ -166,17 +169,20 @@
 </div>
 
 <!-- PANTALLA DE PERFIL -->
-<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col px-6 pt-12 pb-8 hidden" style="transform: translateY(100%);">
-        <div class="flex justify-between items-center mb-8">
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col hidden overflow-y-auto" style="transform: translateY(100%);">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
         <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
         <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
     </div>
 
-    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mb-2" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
-    <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">            
-        <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+    <!-- Avatar -->
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mx-6 mb-6" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
+        <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">
+            <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
         </div>
         <div class="text-center">
             <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
@@ -184,10 +190,11 @@
         </div>
     </div>
 
-    <div class="mt-6 space-y-3">
+    <!-- Stats -->
+    <div class="px-6 space-y-3">
         <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
-        <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
+            <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
         </div>
         <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
@@ -199,17 +206,26 @@
         </div>
         <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
             <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
-
             <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
                 class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
                 <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
             </button>
         </div>
+        <button onclick="abrirLogros()" class="w-full bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10 card-shadow active:scale-[0.98] transition-all">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">🏆</span>
+                <div class="text-left">
+                    <p class="text-sm font-bold text-black dark:text-white">Mis logros</p>
+                    <p id="perfil-logros-count" class="text-xs text-slate-400 font-medium">Cargando...</p>
+                </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
     </div>
-    
 
-    <div class="mt-auto">
-        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
+    <!-- Cerrar sesión -->
+    <div class="px-6 pt-6 pb-10 mt-2">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
             Cerrar sesión
         </button>
     </div>
@@ -224,6 +240,7 @@
     <!-- Tira de días horizontal -->
     <div id="tira-dias" class="flex gap-2 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"></div>
     </div>
+
 </header>
 
     <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
@@ -362,7 +379,7 @@
 </div>
     
 <!-- PANTALLA DE CREAR HÁBITO -->
-<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-30 flex flex-col" style="transform: translateY(100%);">
+<div id="pantalla-crear-habito" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col" style="transform: translateY(100%);">
     
     <!-- Header -->
     <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
@@ -495,7 +512,48 @@
         </div>
 
     </div>
-
+<!-- Recordatorio -->
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl overflow-hidden card-shadow">
+            <div class="flex justify-between items-center px-4 py-3.5">
+                <div>
+                    <p class="text-sm font-bold text-black dark:text-white">Recordatorio diario</p>
+                    <p class="text-xs text-slate-400 font-medium mt-0.5">Aviso si no has completado el hábito</p>
+                </div>
+                <button type="button" id="toggle-recordatorio" onclick="toggleRecordatorio()"
+                    class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white/20 relative transition-all flex-shrink-0">
+                    <span id="toggle-recordatorio-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-200"></span>
+                </button>
+            </div>
+            <div id="recordatorio-hora-container" class="hidden border-t border-slate-200 dark:border-white/10 px-4 py-3">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">¿A qué hora?</p>
+                <div class="flex items-center justify-center gap-3">
+                    <div class="flex flex-col items-center gap-1">
+                        <button type="button" onclick="cambiarHora(1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <div class="w-16 h-14 bg-white dark:bg-[#2a2a2a] rounded-2xl flex items-center justify-center card-shadow">
+                            <span id="recordatorio-hora-display" class="text-2xl font-black text-black dark:text-white">08</span>
+                        </div>
+                        <button type="button" onclick="cambiarHora(-1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                    <span class="text-2xl font-black text-black dark:text-white mb-1">:</span>
+                    <div class="flex flex-col items-center gap-1">
+                        <button type="button" onclick="cambiarMinuto(1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <div class="w-16 h-14 bg-white dark:bg-[#2a2a2a] rounded-2xl flex items-center justify-center card-shadow">
+                            <span id="recordatorio-minuto-display" class="text-2xl font-black text-black dark:text-white">00</span>
+                        </div>
+                        <button type="button" onclick="cambiarMinuto(-1)" class="w-10 h-8 flex items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a] active:scale-90 transition-all text-slate-500 dark:text-white/50 font-bold card-shadow">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" id="recordatorio-hora" value="08:00">
+            </div>
+        </div>
     <!-- Botón crear fijo al fondo -->
     <div class="shrink-0 px-6 pb-10 pt-4 border-t border-slate-100 dark:border-white/5">
         <button onclick="crearHabitoNuevo()"
@@ -514,10 +572,16 @@
                     class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             </button>
-            <button onclick="eliminarHabitoDesdeDetalle()"
-                    class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-            </button>
+            <div class="flex gap-2">
+                <button onclick="abrirEditarHabito()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onclick="eliminarHabitoDesdeDetalle()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                </button>
+            </div>
         </div>
         <div class="flex items-center gap-4">
             <div id="detalle-emoji-container" class="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl">
@@ -554,14 +618,7 @@
             <div id="mapa-actividad" class="overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 <div id="grid-actividad" class="flex gap-1"></div>
             </div>
-            <div class="flex items-center gap-2 justify-end">
-                <span class="text-[10px] text-slate-300 font-medium">Menos</span>
-                <div class="w-3 h-3 rounded-sm bg-slate-100"></div>
-                <div id="actividad-color-1" class="w-3 h-3 rounded-sm" style="opacity:0.3; background:#6C63FF"></div>
-                <div id="actividad-color-2" class="w-3 h-3 rounded-sm" style="opacity:0.6; background:#6C63FF"></div>
-                <div id="actividad-color-3" class="w-3 h-3 rounded-sm" style="background:#6C63FF"></div>
-                <span class="text-[10px] text-slate-300 font-medium">Más</span>
-            </div>
+            <div id="leyenda-actividad"></div>
         </div>
 
         <!-- Últimos registros -->
@@ -579,6 +636,21 @@
             style="background:#6C63FF;">
             Marcar como hecho hoy ✓
         </button>
+    </div>
+</div>
+<!-- PANTALLA DE LOGROS -->
+<div id="pantalla-logros" class="hidden fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col" style="transform: translateY(100%);">
+    <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
+        <button onclick="cerrarLogros()" class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <h2 class="text-base font-black text-black dark:text-white">Mis logros</h2>
+        <div class="w-10"></div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-6 pb-8 space-y-3">
+        <p id="logros-resumen" class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1"></p>
+        <div id="lista-logros" class="space-y-2"></div>
     </div>
 </div>
 <script src="app.js"></script>

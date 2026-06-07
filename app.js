@@ -6,18 +6,19 @@ let graficaSemanal = null;
 let graficaMensual = null;
 let diaSeleccionadoTira = hoyComoTexto();
 let animarCargaInicial = true;
+let notasCacheadas = {};
 
 // ============================================================
 // ANIMACIONES DE PANTALLA
 // ============================================================
 function abrirPantallaAnimada(id) {
     const el = document.getElementById(id);
+    el.classList.remove('pantalla-slide-up', 'pantalla-slide-down');
+    el.style.transform = '';
+    el.style.opacity = '';
     el.classList.remove('hidden');
-    el.style.transform = 'translateY(100%)';
-    requestAnimationFrame(() => {
-        el.classList.add('pantalla-slide-up');
-        el.style.transform = '';
-    });
+    void el.offsetHeight; // fuerza reflow
+    el.classList.add('pantalla-slide-up');
     el.addEventListener('animationend', () => {
         el.classList.remove('pantalla-slide-up');
     }, { once: true });
@@ -25,13 +26,15 @@ function abrirPantallaAnimada(id) {
 
 function cerrarPantallaAnimada(id, callback) {
     const el = document.getElementById(id);
-    el.classList.add('pantalla-slide-down');
-    el.addEventListener('animationend', () => {
-        el.classList.remove('pantalla-slide-down');
+    el.classList.remove('pantalla-slide-up');
+    el.classList.add('pantalla-cerrando');
+    setTimeout(() => {
+        el.classList.remove('pantalla-cerrando');
         el.classList.add('hidden');
-        el.style.transform = 'translateY(100%)';
+        el.style.transform = '';
+        el.style.opacity = '';
         if (callback) callback();
-    }, { once: true });
+    }, 280);
 }
 
 function hoyComoTexto() {
@@ -83,8 +86,16 @@ function calcularRacha(habito) {
         new Date(new Date() - 86400000).getMonth(),
         new Date(new Date() - 86400000).getDate()
     );
-    // La racha solo cuenta si completó hoy o ayer
-    if (registrosOrdenados[0] !== hoy && registrosOrdenados[0] !== ayer) return 0;
+    const anteayer = fechaComoTexto(
+        new Date(new Date() - 172800000).getFullYear(),
+        new Date(new Date() - 172800000).getMonth(),
+        new Date(new Date() - 172800000).getDate()
+    );
+
+    // Sin actividad en los últimos 2 días — racha rota
+    if (registrosOrdenados[0] !== hoy && 
+        registrosOrdenados[0] !== ayer && 
+        registrosOrdenados[0] !== anteayer) return 0;
 
     let racha = 0;
     let fechaEsperada = new Date(registrosOrdenados[0] + "T00:00:00");
@@ -101,6 +112,26 @@ function calcularRacha(habito) {
         }
     }
     return racha;
+}
+
+// Devuelve true si la racha está en riesgo (último registro fue anteayer)
+function rachaEnRiesgo(habito) {
+    if (habito.registros.length === 0) return false;
+    const registrosOrdenados = [...habito.registros].sort().reverse();
+    const hoy = hoyComoTexto();
+    const ayer = fechaComoTexto(
+        new Date(new Date() - 86400000).getFullYear(),
+        new Date(new Date() - 86400000).getMonth(),
+        new Date(new Date() - 86400000).getDate()
+    );
+    const anteayer = fechaComoTexto(
+        new Date(new Date() - 172800000).getFullYear(),
+        new Date(new Date() - 172800000).getMonth(),
+        new Date(new Date() - 172800000).getDate()
+    );
+    return registrosOrdenados[0] === anteayer && 
+           registrosOrdenados[0] !== hoy && 
+           registrosOrdenados[0] !== ayer;
 }
 
 function calcularRachaMaxima(habito) {
@@ -236,49 +267,64 @@ async function verificarSesion() {
         return;
     }
 
-    // Buscar usuario en Supabase
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}&select=*`,
-        { headers }
-    );
-    const data = await res.json();
+    // Mostrar estado de carga
+    mostrarCargando(true);
 
-    if (data.length === 0) {
-        localStorage.removeItem('habify_usuario_id');
-        document.getElementById('pantalla-auth').classList.remove('hidden');
-        return;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}&select=*`,
+            { headers }
+        );
+        const data = await res.json();
+
+        if (data.length === 0) {
+            localStorage.removeItem('habify_usuario_id');
+            document.getElementById('pantalla-auth').classList.remove('hidden');
+            mostrarCargando(false);
+            return;
+        }
+
+        usuarioActual = data[0];
+        actualizarUIUsuario(usuarioActual);
+        await cargarDatosUsuario();
+        document.getElementById('pantalla-auth').classList.add('hidden');
+    } catch (e) {
+        mostrarError('Sin conexión. Revisa tu internet e intenta de nuevo.');
+    } finally {
+        mostrarCargando(false);
     }
-
-    usuarioActual = data[0];
-    await cargarDatosUsuario();
-    document.getElementById('pantalla-auth').classList.add('hidden');
-    actualizarUIUsuario(usuarioActual);
 }
 
 async function cargarDatosUsuario() {
     if (!usuarioActual) return;
 
-    // Cargar hábitos desde Supabase
-    const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
-    
-    // Cargar registros desde Supabase
-    const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
+    try {
+        const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
+        const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
 
-    // Convertir al formato que usa la app
-    misHabitos = habitosDB.map(h => ({
-        id: h.id,
-        nombre: h.nombre,
-        emoji: h.emoji,
-        color: h.color || '#6C63FF',   // ← agrega esta línea
-        metaSemanal: h.meta_semanal,
-        fechaCreacion: h.fecha_creacion,
-        registros: registrosDB
-            .filter(r => r.habito_id === h.id)
-            .map(r => r.fecha)
-    }));
-    renderizarHabitos();
-    actualizarResumenHoy();
-    inicializarTiraDias();
+        misHabitos = habitosDB.map(h => ({
+            id: h.id,
+            nombre: h.nombre,
+            emoji: h.emoji,
+            color: h.color || '#6C63FF',
+            metaSemanal: h.meta_semanal,
+            fechaCreacion: h.fecha_creacion,
+            recordatorio: h.recordatorio || null,
+            orden: h.orden ?? 0,
+            registros: registrosDB
+                .filter(r => r.habito_id === h.id)
+                .map(r => r.fecha)
+        }));
+
+        await cargarTodasLasNotas();
+        renderizarHabitos();
+        actualizarResumenHoy();
+        inicializarTiraDias();
+        programarRecordatorios();
+        verificarNuevosLogros();
+    } catch (e) {
+        mostrarError('Revisa tu conexión.');
+    }
 }
 
 function actualizarUIUsuario(usuario) {
@@ -319,6 +365,42 @@ function abrirPerfil() {
     document.getElementById('perfil-racha-max').innerText =
         rachaMaxGlobal > 0 ? `🔥 ${rachaMaxGlobal} días` : '—';
 
+    // Renderizar logros
+    const contenedorLogros = document.getElementById('perfil-logros');
+    if (contenedorLogros) {
+        const desbloqueados = obtenerLogrosDesbloqueados();
+        const idsDesbloqueados = desbloqueados.map(l => l.id);
+        contenedorLogros.innerHTML = '';
+
+        LOGROS.forEach(logro => {
+            const desbloqueado = idsDesbloqueados.includes(logro.id);
+            const div = document.createElement('div');
+            div.style.cssText = `
+                display:flex; align-items:center; gap:12px; padding:12px 16px;
+                border-radius:16px; border:1px solid;
+                background:${desbloqueado ? 'rgba(108,99,255,0.08)' : 'transparent'};
+                border-color:${desbloqueado ? 'rgba(108,99,255,0.2)' : 'rgba(0,0,0,0.06)'};
+                opacity:${desbloqueado ? '1' : '0.4'};
+            `;
+            div.innerHTML = `
+                <span style="font-size:24px; flex-shrink:0;">${logro.emoji}</span>
+                <div style="flex:1; min-width:0;">
+                    <p style="font-size:13px; font-weight:700;">${logro.nombre}</p>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:1px;">${logro.descripcion}</p>
+                </div>
+                ${desbloqueado ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C63FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ''}
+            `;
+            contenedorLogros.appendChild(div);
+        });
+    }
+
+    // Contador de logros
+    const desbloqueados = obtenerLogrosDesbloqueados();
+    const contadorEl = document.getElementById('perfil-logros-count');
+    if (contadorEl) {
+        contadorEl.innerText = `${desbloqueados.length} de ${LOGROS.length} desbloqueados`;
+    }
+
     abrirPantallaAnimada('pantalla-perfil');
 }
 
@@ -338,16 +420,46 @@ function cerrarSesion() {
     }
 }
 // ============================================================
-// INICIALIZADOR
+// ESTADO DE CARGA Y ERRORES
 // ============================================================
+function mostrarCargando(activo) {
+    let el = document.getElementById('pantalla-cargando');
+    if (activo) {
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'pantalla-cargando';
+            el.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-black gap-4';
+            el.innerHTML = `
+                <div style="width:40px;height:40px;border-radius:50%;border:3px solid rgba(108,99,255,0.2);border-top-color:#6C63FF;animation:spin 0.8s linear infinite;"></div>
+                <p class="text-sm font-bold text-slate-400">Cargando...</p>
+                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+            `;
+            document.body.appendChild(el);
+        }
+        el.classList.remove('hidden');
+    } else {
+        if (el) el.classList.add('hidden');
+    }
+}
+
+function mostrarError(mensaje) {
+    let el = document.getElementById('toast-error');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'toast-error';
+        el.className = 'fixed top-6 left-6 right-6 z-[200] px-4 py-3 rounded-2xl text-white text-sm font-bold text-center transition-all';
+        el.style.background = '#f43f5e';
+        el.style.boxShadow = '0 4px 20px rgba(244,63,94,0.4)';
+        document.body.appendChild(el);
+    }
+    el.innerText = mensaje;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3500);
+}
 function inicializarApp() {
     inicializarModoOscuro();
-    verificarSesion();
-    actualizarSaludo();
-    renderizarHabitos();
-    actualizarResumenHoy();
     inicializarScrollResumen();
-    inicializarTiraDias();
+    verificarSesion();
 }
 
 // ============================================================
@@ -404,11 +516,18 @@ function renderizarHabitos() {
         return;
     }
 
+    const fechaReferencia = diaSeleccionadoTira || hoyComoTexto();
+    const esHoyReferencia = fechaReferencia === hoyComoTexto();
+
     misHabitos.forEach(habito => {
+        // Solo mostrar hábitos que existían en la fecha seleccionada
+        if (habito.fechaCreacion > fechaReferencia) return;
+
         const completados = completadosEstaSemana(habito);
         const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
-        const yaHecho = completadoHoy(habito);
+        const yaHecho = habito.registros.includes(fechaReferencia);
         const racha = calcularRacha(habito);
+        const enRiesgo = rachaEnRiesgo(habito);
         const color = habito.color || '#6C63FF';
 
         const esDark = document.documentElement.classList.contains('dark');
@@ -417,8 +536,9 @@ function renderizarHabitos() {
         
 
         const tarjetaHTML = `
-    <div class="rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-pointer active:scale-[0.98]"
-        style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow: ${yaHecho ? `0 4px 20px ${color}20, 0 1px 4px ${color}15` : '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)'};"
+    <div class="habito-card rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-grab active:cursor-grabbing"
+        data-id="${habito.id}"
+        style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow:${yaHecho ? `0 4px 20px ${color}30` : '0 2px 12px rgba(0,0,0,0.06)'};"
          onclick="abrirDetalleHabito('${habito.id}')">
         <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]" style="background:${color}"></div>
         <div class="flex items-center gap-4 px-5 py-4 pl-6 relative">
@@ -429,13 +549,14 @@ function renderizarHabitos() {
                 <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
                 <div class="flex items-center gap-2 mt-0.5">
                     <p class="text-xs font-bold text-slate-400">${completados}/${habito.metaSemanal} esta semana</p>
-                    ${racha > 0 ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
+                    ${racha > 0 && !enRiesgo ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
+                    ${racha > 0 && enRiesgo ? `<span class="text-xs font-bold text-amber-500">⚠️ ${racha} en riesgo</span>` : ''}
                 </div>
                 <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
                     <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
                 </div>
             </div>
-            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoHoy('${habito.id}')"
+            <button data-habito-id="${habito.id}" onclick="event.stopPropagation(); toggleHabitoDia('${habito.id}', '${fechaReferencia}')"
                     class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
                     style="background:${yaHecho ? color : 'transparent'}; border:2px solid ${yaHecho ? color : '#e2e8f0'}">
                 ${yaHecho
@@ -448,6 +569,9 @@ function renderizarHabitos() {
 `;
        contenedor.innerHTML += tarjetaHTML;
     });
+
+    // Activar drag & drop
+    activarDragAndDrop();
 
     // Fade-in escalonado solo en carga inicial
     if (animarCargaInicial) {
@@ -469,33 +593,27 @@ function renderizarHabitos() {
 // TOGGLE HÁBITO HOY
 // Si ya lo hizo hoy → lo desmarca. Si no → lo marca.
 // ============================================================
-async function toggleHabitoHoy(id) {
-    const habito = misHabitos.find(h => h.id === id);
+async function toggleHabitoDia(habitoId, fechaStr) {
+    const habito = misHabitos.find(h => h.id === habitoId);
     if (!habito || !usuarioActual) return;
 
-    const hoy = hoyComoTexto();
+    const completado = habito.registros.includes(fechaStr);
 
-    if (habito.registros.includes(hoy)) {
-        await desmarcarHabitoSupabase(id, hoy);
-        habito.registros = habito.registros.filter(f => f !== hoy);
+    if (completado) {
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
     } else {
-        await marcarHabitoSupabase(id, usuarioActual.id, hoy);
-        habito.registros.push(hoy);
-        if (navigator.vibrate) navigator.vibrate(50);
+        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        habito.registros.push(fechaStr);
+        if (navigator.vibrate) navigator.vibrate(30);
     }
 
+    animarCargaInicial = false;
     renderizarHabitos();
-
-    // Animación en el botón de check recién tocado
-    setTimeout(() => {
-        const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
-        if (btnCheck) {
-            btnCheck.classList.add('check-pop');
-            btnCheck.addEventListener('animationend', () => {
-                btnCheck.classList.remove('check-pop');
-            }, { once: true });
-        }
-    }, 20);
+    actualizarResumenHoy();
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
+    verificarNuevosLogros();
 }
 
 // ============================================================
@@ -526,6 +644,17 @@ function abrirModal() {
     document.getElementById('emoji-preview').innerText = '🏃';
     document.getElementById('emoji-nombre-preview').innerText = 'Correr';
     document.getElementById('habito-color').value = '#6C63FF';
+    // Reset recordatorio
+    recordatorioActivo = false;
+    document.getElementById('toggle-recordatorio').style.background = '';
+    document.getElementById('toggle-recordatorio-circulo').style.transform = 'translateX(0)';
+    document.getElementById('recordatorio-hora-container').classList.add('hidden');
+    horaRecordatorio = 8;
+    minutoRecordatorio = 0;
+    document.getElementById('recordatorio-hora').value = '08:00';
+    document.getElementById('recordatorio-hora-display').innerText = '08';
+    document.getElementById('recordatorio-minuto-display').innerText = '00';
+
     document.getElementById('btn-crear-habito').style.background = '#6C63FF';
     document.getElementById('btn-crear-habito').style.boxShadow = '0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25)';
     document.getElementById('habito-meta').value = '1';
@@ -555,6 +684,10 @@ function abrirModal() {
 }
 
 function cerrarModal() {
+    modoEdicion = false;
+    document.querySelector('#pantalla-crear-habito h2').innerText = 'Nuevo hábito';
+    const btnCrear = document.getElementById('btn-crear-habito');
+    btnCrear.onclick = crearHabitoNuevo;
     cerrarPantallaAnimada('pantalla-crear-habito');
 }
 
@@ -978,70 +1111,13 @@ function generarListaRachas() {
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-sm font-black text-black dark:text-white">${racha > 0 ? `🔥 ${racha}` : '—'}</p>
-                    <p class="text-xs text-slate-400 font-medium">${racha > 0 ? 'días' : 'sin racha'}</p>
+                    <p class="text-sm font-black ${rachaEnRiesgo(habito) ? 'text-amber-500' : 'text-black dark:text-white'}">${racha > 0 ? (rachaEnRiesgo(habito) ? `⚠️ ${racha}` : `🔥 ${racha}`) : '—'}</p>
+                    <p class="text-xs font-medium ${rachaEnRiesgo(habito) ? 'text-amber-400' : 'text-slate-400'}">${racha > 0 ? (rachaEnRiesgo(habito) ? '¡complétalo hoy!' : 'días') : 'sin racha'}</p>
                 </div>
             </div>
         `;
     });
 }
-
-// ============================================================
-// GRID DE EMOJIS
-// ============================================================
-function inicializarGridEmojis() {
-    const emojis = [
-        "🏃","🚴","🏋️","🧘","🤸","⚽","🏊",
-        "🧗","🎾","🏄","⛷️","🥊","🏇","🤾",
-        "💧","🍏","🥗","🍎","🥦","🫐","🥤",
-        "🍵","🥑","🍇","🥕","🫚","🍱","🥩",
-        "📚","✏️","🎯","💡","🧠","📖","🎓",
-        "💻","📝","🔬","📐","🗂️","📌","🖊️",
-        "😴","⏰","☀️","🌙","🧹","🛁","🪥",
-        "💰","📊","💼","📈","✅","💳","🏦",
-        "🎨","🎵","🎸","🎹","✍️","📷","🎬",
-        "🌱","🌿","❤️","🙏","💪","🔥","⭐"
-    ];
-
-    const grid = document.getElementById('grid-emojis-panel');
-    if (!grid) return;
-
-    grid.innerHTML = '';
-
-    emojis.forEach(emoji => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.innerText = emoji;
-        btn.className = 'text-2xl p-2 rounded-2xl hover:bg-slate-100 active:scale-90 transition-all emoji-btn flex items-center justify-center';
-        btn.onclick = () => seleccionarEmoji(emoji, btn);
-        grid.appendChild(btn);
-    });
-}
-
-function seleccionarEmoji(emoji, btnClickeado) {
-    document.getElementById('habito-emoji').value = emoji;
-    document.getElementById('emoji-seleccionado').innerText = emoji;
-
-    document.querySelectorAll('.emoji-btn').forEach(btn => {
-        btn.classList.remove('bg-[#333538]', 'scale-110');
-        btn.style.filter = '';
-    });
-
-    btnClickeado.classList.add('bg-[#333538]');
-    btnClickeado.style.filter = 'brightness(10)';
-
-    setTimeout(() => cerrarSelectorEmoji(), 200);
-}
-
-function abrirSelectorEmoji() {
-    document.getElementById('selector-emoji').classList.remove('hidden');
-    inicializarGridEmojis();
-}
-
-function cerrarSelectorEmoji() {
-    document.getElementById('selector-emoji').classList.add('hidden');
-}
-
 // ============================================================
 // OCULTAR RESUMEN AL HACER SCROLL
 // ============================================================
@@ -1108,12 +1184,25 @@ if (catActiva && !document.getElementById('pantalla-crear-habito').classList.con
 // REGISTRO DIARIO - NOTAS POR FECHA
 // ============================================================
 
-function obtenerNotas() {
-    return JSON.parse(localStorage.getItem('habify_notas')) || {};
+async function cargarTodasLasNotas() {
+    if (!usuarioActual) return;
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioActual.id}&nota=not.is.null&select=fecha,nota`,
+            { headers }
+        );
+        const data = await res.json();
+        notasCacheadas = {};
+        data.forEach(r => {
+            if (r.nota && r.nota.trim()) notasCacheadas[r.fecha] = r.nota;
+        });
+    } catch (e) {
+        notasCacheadas = {};
+    }
 }
 
-function guardarNotas(notas) {
-    localStorage.setItem('habify_notas', JSON.stringify(notas));
+function obtenerNotas() {
+    return notasCacheadas;
 }
 
 async function cargarNotaDia(fechaStr) {
@@ -1166,6 +1255,12 @@ async function guardarNotaDia() {
         }
     }
 
+    // Actualizar caché local
+    if (texto) {
+        notasCacheadas[fechaActual] = texto;
+    } else {
+        delete notasCacheadas[fechaActual];
+    }
     msg.classList.remove('hidden');
     setTimeout(() => msg.classList.add('hidden'), 2000);
     generarCalendarioMensual();
@@ -1244,8 +1339,61 @@ btn.onclick = () => {
 
 function seleccionarDiaTira(fechaStr) {
     diaSeleccionadoTira = fechaStr;
+    animarCargaInicial = false;
     inicializarTiraDias();
     mostrarResumenDiaTira(fechaStr);
+    renderizarHabitos();
+}
+
+async function toggleHabitoDia(habitoId, fechaStr) {
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (!habito || !usuarioActual) return;
+
+    const completado = habito.registros.includes(fechaStr);
+
+    if (completado) {
+        await desmarcarHabitoSupabase(habitoId, fechaStr);
+        habito.registros = habito.registros.filter(f => f !== fechaStr);
+    } else {
+        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        habito.registros.push(fechaStr);
+        if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    animarCargaInicial = false;
+    renderizarHabitos();
+    actualizarResumenHoy();
+    inicializarTiraDias();
+    mostrarResumenDiaTira(fechaStr);
+}
+
+async function toggleHabitoHoy(id) {
+    const habito = misHabitos.find(h => h.id === id);
+    if (!habito || !usuarioActual) return;
+
+    const fechaRef = diaSeleccionadoTira || hoyComoTexto();
+
+    if (habito.registros.includes(fechaRef)) {
+        await desmarcarHabitoSupabase(id, fechaRef);
+        habito.registros = habito.registros.filter(f => f !== fechaRef);
+    } else {
+        await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
+        habito.registros.push(fechaRef);
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    animarCargaInicial = false;
+    renderizarHabitos();
+
+    setTimeout(() => {
+        const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
+        if (btnCheck) {
+            btnCheck.classList.add('check-pop');
+            btnCheck.addEventListener('animationend', () => {
+                btnCheck.classList.remove('check-pop');
+            }, { once: true });
+        }
+    }, 20);
 }
 
 function mostrarResumenDiaTira(fechaStr) {
@@ -1277,7 +1425,196 @@ function mostrarResumenDiaTira(fechaStr) {
 
 let colorSeleccionado = '#6C63FF';
 let metaSeleccionada = 1;
+let recordatorioActivo = false;
 
+// ============================================================
+// RECORDATORIOS
+// ============================================================
+let horaRecordatorio = 8;
+let minutoRecordatorio = 0;
+
+function cambiarHora(delta) {
+    horaRecordatorio = (horaRecordatorio + delta + 24) % 24;
+    document.getElementById('recordatorio-hora-display').innerText = String(horaRecordatorio).padStart(2, '0');
+    actualizarInputHora();
+}
+
+function cambiarMinuto(delta) {
+    minutoRecordatorio = (minutoRecordatorio + delta * 5 + 60) % 60;
+    document.getElementById('recordatorio-minuto-display').innerText = String(minutoRecordatorio).padStart(2, '0');
+    actualizarInputHora();
+}
+
+function actualizarInputHora() {
+    const hora = String(horaRecordatorio).padStart(2, '0');
+    const minuto = String(minutoRecordatorio).padStart(2, '0');
+    document.getElementById('recordatorio-hora').value = `${hora}:${minuto}`;
+}
+
+function toggleRecordatorio() {
+    recordatorioActivo = !recordatorioActivo;
+    const btn = document.getElementById('toggle-recordatorio');
+    const circulo = document.getElementById('toggle-recordatorio-circulo');
+    const container = document.getElementById('recordatorio-hora-container');
+    const color = document.getElementById('habito-color').value || '#6C63FF';
+
+    if (recordatorioActivo) {
+        btn.style.background = color;
+        circulo.style.transform = 'translateX(24px)';
+        container.classList.remove('hidden');
+        solicitarPermisoNotificaciones();
+    } else {
+        btn.style.background = '';
+        btn.classList.add('bg-slate-200', 'dark:bg-white/10');
+        circulo.style.transform = 'translateX(0)';
+        container.classList.add('hidden');
+    }
+}
+
+async function solicitarPermisoNotificaciones() {
+    if (!('Notification' in window)) {
+        alert('Tu navegador no soporta notificaciones.');
+        recordatorioActivo = false;
+        return;
+    }
+    if (Notification.permission !== 'granted') {
+        const permiso = await Notification.requestPermission();
+        if (permiso !== 'granted') {
+            alert('Necesitas permitir las notificaciones para usar esta función.');
+            recordatorioActivo = false;
+            toggleRecordatorio();
+        }
+    }
+}
+
+function programarRecordatorios() {
+    if (!misHabitos) return;
+
+    misHabitos.forEach(habito => {
+        if (!habito.recordatorio) return;
+
+        const [hora, minuto] = habito.recordatorio.split(':').map(Number);
+        const ahora = new Date();
+        const recordatorio = new Date();
+        recordatorio.setHours(hora, minuto, 0, 0);
+
+        // Si la hora ya pasó hoy, no programar
+        if (recordatorio <= ahora) return;
+
+        // Si ya completó el hábito hoy, no notificar
+        if (completadoHoy(habito)) return;
+
+        const ms = recordatorio - ahora;
+        setTimeout(() => {
+            if (!completadoHoy(habito)) {
+                new Notification(`¡Recuerda tu hábito! ${habito.emoji}`, {
+                    body: `Aún no has completado "${habito.nombre}" hoy.`,
+                    icon: '/favicon.ico'
+                });
+            }
+        }, ms);
+    });
+}
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+let dragSrcId = null;
+
+function activarDragAndDrop() {
+    const tarjetas = document.querySelectorAll('.habito-card');
+    tarjetas.forEach(tarjeta => {
+        tarjeta.setAttribute('draggable', 'true');
+
+        tarjeta.addEventListener('dragstart', e => {
+            dragSrcId = tarjeta.dataset.id;
+            tarjeta.style.opacity = '0.4';
+            tarjeta.style.transform = 'scale(0.97)';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        tarjeta.addEventListener('dragend', () => {
+            tarjeta.style.opacity = '1';
+            tarjeta.style.transform = '';
+            document.querySelectorAll('.habito-card').forEach(t => {
+                t.classList.remove('drag-over');
+                t.style.borderColor = '';
+            });
+        });
+
+        tarjeta.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (tarjeta.dataset.id !== dragSrcId) {
+                tarjeta.classList.add('drag-over');
+            }
+        });
+
+        tarjeta.addEventListener('dragleave', () => {
+            tarjeta.classList.remove('drag-over');
+        });
+
+        tarjeta.addEventListener('drop', e => {
+            e.preventDefault();
+            if (tarjeta.dataset.id === dragSrcId) return;
+
+            const idOrigen = dragSrcId;
+            const idDestino = tarjeta.dataset.id;
+
+            const indexOrigen = misHabitos.findIndex(h => h.id === idOrigen);
+            const indexDestino = misHabitos.findIndex(h => h.id === idDestino);
+
+            // Reordenar en memoria
+            const [habitoMovido] = misHabitos.splice(indexOrigen, 1);
+            misHabitos.splice(indexDestino, 0, habitoMovido);
+
+            // Actualizar orden en Supabase
+            misHabitos.forEach((h, i) => {
+                h.orden = i;
+                actualizarOrdenSupabase(h.id, i);
+            });
+
+            animarCargaInicial = false;
+            renderizarHabitos();
+        });
+
+        // Touch para móvil
+        let touchStartY = 0;
+        let touchStartId = null;
+
+        tarjeta.addEventListener('touchstart', e => {
+            touchStartY = e.touches[0].clientY;
+            touchStartId = tarjeta.dataset.id;
+            tarjeta.style.opacity = '0.7';
+            tarjeta.style.transform = 'scale(0.97)';
+        }, { passive: true });
+
+        tarjeta.addEventListener('touchend', e => {
+            tarjeta.style.opacity = '1';
+            tarjeta.style.transform = '';
+            const touchEndY = e.changedTouches[0].clientY;
+            const diff = touchEndY - touchStartY;
+
+            if (Math.abs(diff) < 30) return; // fue un tap, no drag
+
+            const indexOrigen = misHabitos.findIndex(h => h.id === touchStartId);
+            const nuevoPosicion = diff > 0 ? indexOrigen + 1 : indexOrigen - 1;
+
+            if (nuevoPosicion < 0 || nuevoPosicion >= misHabitos.length) return;
+
+            const [habitoMovido] = misHabitos.splice(indexOrigen, 1);
+            misHabitos.splice(nuevoPosicion, 0, habitoMovido);
+
+            misHabitos.forEach((h, i) => {
+                h.orden = i;
+                actualizarOrdenSupabase(h.id, i);
+            });
+
+            animarCargaInicial = false;
+            renderizarHabitos();
+        }, { passive: true });
+    });
+}
 function actualizarContador(input) {
     document.getElementById('contador-caracteres').innerText = `${input.value.length}/30`;
 }
@@ -1308,33 +1645,6 @@ function seleccionarColor(color, btn) {
     document.getElementById('slider-meta').style.background = `linear-gradient(to right, ${color} ${porcentaje}%, #e2e8f0 ${porcentaje}%)`;
     document.getElementById('slider-meta').style.setProperty('--slider-color', color);
 
-}
-
-
-function seleccionarMeta(dias, btn) {
-    metaSeleccionada = dias;
-    document.getElementById('habito-meta').value = dias;
-
-    const descripciones = {
-        1: '1 día a la semana — para empezar suave',
-        2: '2 días a la semana — ritmo ligero',
-        3: '3 días a la semana — equilibrado',
-        4: '4 días a la semana — constante',
-        5: '5 días a la semana — disciplinado',
-        7: '¡Todos los días! — modo bestia 🔥'
-    };
-    document.getElementById('meta-descripcion').innerText = descripciones[dias];
-
-    const color = document.getElementById('habito-color').value || '#6C63FF';
-    document.querySelectorAll('.meta-btn').forEach(b => {
-        b.style.background = '';
-        b.style.color = '';
-        b.classList.remove('text-white');
-        b.classList.add('bg-slate-100', 'text-slate-500');
-    });
-    btn.style.background = color;
-    btn.style.color = 'white';
-    btn.classList.remove('bg-slate-100', 'text-slate-500');
 }
 
 const CATEGORIAS_EMOJI = {
@@ -1470,8 +1780,9 @@ async function crearHabitoNuevo() {
     btn.innerText = 'Creando...';
     btn.disabled = true;
 
+    const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
     const resultado = await crearHabitoSupabase(
-        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color
+        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color, recordatorio
     );
 
     if (resultado.error) {
@@ -1488,6 +1799,8 @@ async function crearHabitoNuevo() {
         color: resultado.habito.color || '#6C63FF',
         metaSemanal: resultado.habito.meta_semanal,
         fechaCreacion: resultado.habito.fecha_creacion,
+        recordatorio: resultado.habito.recordatorio || null,
+        orden: misHabitos.length,
         registros: []
     };
 
@@ -1502,6 +1815,7 @@ async function crearHabitoNuevo() {
 // ============================================================
 
 let habitoDetalleActual = null;
+let modoEdicion = false;
 
 function abrirDetalleHabito(id) {
     const habito = misHabitos.find(h => h.id === id);
@@ -1532,10 +1846,6 @@ function abrirDetalleHabito(id) {
     document.getElementById('stat-racha-max').innerText = rachaMax;
     document.getElementById('stat-total').innerText = total;
 
-    ['actividad-color-1', 'actividad-color-2', 'actividad-color-3'].forEach(id => {
-        document.getElementById(id).style.background = color;
-    });
-
     const yaHecho = completadoHoy(habito);
     const btnCheck = document.getElementById('detalle-btn-check');
     const esModoOscuro = document.documentElement.classList.contains('dark');
@@ -1548,6 +1858,135 @@ function abrirDetalleHabito(id) {
     generarUltimosRegistros(habito);
 
     abrirPantallaAnimada('pantalla-detalle-habito');
+}
+
+function abrirEditarHabito() {
+    if (!habitoDetalleActual) return;
+    const habito = habitoDetalleActual;
+    modoEdicion = true;
+
+    // Precargar datos del hábito en la pantalla de crear
+    document.getElementById('habito-nombre').value = habito.nombre;
+    document.getElementById('contador-caracteres').innerText = `${habito.nombre.length}/30`;
+    document.getElementById('habito-emoji').value = habito.emoji;
+    document.getElementById('emoji-preview').innerText = habito.emoji;
+    document.getElementById('emoji-nombre-preview').innerText = habito.nombre;
+    document.getElementById('habito-color').value = habito.color;
+    document.getElementById('habito-meta').value = habito.metaSemanal;
+
+    // Actualizar slider
+    const slider = document.getElementById('slider-meta');
+    slider.value = habito.metaSemanal;
+    actualizarSliderMeta(habito.metaSemanal);
+
+    // Abrir pantalla primero para que los elementos sean visibles
+    abrirPantallaAnimada('pantalla-crear-habito');
+
+    // Precargar recordatorio si existe
+    if (habito.recordatorio) {
+        recordatorioActivo = true;
+        const btn = document.getElementById('toggle-recordatorio');
+        const circulo = document.getElementById('toggle-recordatorio-circulo');
+        btn.style.background = habito.color;
+        circulo.style.transform = 'translateX(24px)';
+        document.getElementById('recordatorio-hora-container').classList.remove('hidden');
+        document.getElementById('recordatorio-hora').value = habito.recordatorio;
+        // Actualizar displays visuales con la hora guardada
+        const partes = habito.recordatorio.split(':');
+        horaRecordatorio = parseInt(partes[0]);
+        minutoRecordatorio = parseInt(partes[1]);
+        document.getElementById('recordatorio-hora-display').innerText = partes[0];
+        document.getElementById('recordatorio-minuto-display').innerText = partes[1];
+    } else {
+        recordatorioActivo = false;
+        document.getElementById('toggle-recordatorio').style.background = '';
+        document.getElementById('toggle-recordatorio-circulo').style.transform = 'translateX(0)';
+        document.getElementById('recordatorio-hora-container').classList.add('hidden');
+        horaRecordatorio = 8;
+        minutoRecordatorio = 0;
+        document.getElementById('recordatorio-hora').value = '08:00';
+        document.getElementById('recordatorio-hora-display').innerText = '08';
+        document.getElementById('recordatorio-minuto-display').innerText = '00';
+    }
+
+    // Cambiar título y botón
+    document.querySelector('#pantalla-crear-habito h2').innerText = 'Editar hábito';
+    const btnCrear = document.getElementById('btn-crear-habito');
+    btnCrear.innerText = 'Guardar cambios →';
+    btnCrear.style.background = habito.color;
+    btnCrear.style.boxShadow = `0 6px 24px ${habito.color}40`;
+    btnCrear.onclick = guardarEdicionHabito;
+
+    // Actualizar color seleccionado
+    document.getElementById('habito-color').value = habito.color;
+    colorSeleccionado = habito.color;
+    document.querySelectorAll('.color-btn').forEach(b => b.style.outline = 'none');
+    const btnColor = document.querySelector(`.color-btn[data-color="${habito.color}"]`);
+    if (btnColor) {
+        btnColor.style.outline = `2px solid ${habito.color}`;
+        btnColor.style.outlineOffset = '3px';
+    }
+
+    // Cargar categoría deporte por defecto
+    setTimeout(() => {
+        mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
+    }, 50);
+}
+
+async function guardarEdicionHabito() {
+    if (!habitoDetalleActual || !usuarioActual) return;
+
+    const nombre = document.getElementById('habito-nombre').value.trim();
+    const emoji = document.getElementById('habito-emoji').value;
+    const color = document.getElementById('habito-color').value;
+    const meta = parseInt(document.getElementById('habito-meta').value);
+
+    if (!nombre) {
+        document.getElementById('habito-nombre').focus();
+        document.getElementById('habito-nombre').classList.add('ring-2', 'ring-red-400');
+        setTimeout(() => document.getElementById('habito-nombre').classList.remove('ring-2', 'ring-red-400'), 1500);
+        return;
+    }
+
+    const btn = document.getElementById('btn-crear-habito');
+    btn.innerText = 'Guardando...';
+    btn.disabled = true;
+
+    const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
+    const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio);
+
+    if (resultado.error) {
+        alert('Error al guardar. Intenta de nuevo.');
+        btn.innerText = 'Guardar cambios →';
+        btn.disabled = false;
+        return;
+    }
+
+    // Actualizar en memoria
+    const habito = misHabitos.find(h => h.id === habitoDetalleActual.id);
+    if (habito) {
+        habito.nombre = nombre;
+        habito.emoji = emoji;
+        habito.color = color;
+        habito.metaSemanal = meta;
+        habito.recordatorio = recordatorio;
+        habitoDetalleActual = habito;
+    }
+
+    modoEdicion = false;
+    cerrarPantallaAnimada('pantalla-crear-habito', () => {
+        // Resetear pantalla crear a su estado original
+        document.querySelector('#pantalla-crear-habito h2').innerText = 'Nuevo hábito';
+        const btnCrear = document.getElementById('btn-crear-habito');
+        btnCrear.onclick = crearHabitoNuevo;
+        btnCrear.disabled = false;
+    });
+
+    renderizarHabitos();
+    actualizarResumenHoy();
+
+    // Refrescar detalle sin cerrar la pantalla
+    abrirDetalleHabito(habitoDetalleActual.id);
 }
 
 function cerrarDetalleHabito() {
@@ -1589,14 +2028,17 @@ async function eliminarHabitoDesdeDetalle() {
 }
 
 function generarMapaActividad(habito) {
-    const grid = document.getElementById('grid-actividad');
-    grid.innerHTML = '';
+    const contenedor = document.getElementById('mapa-actividad');
+    contenedor.innerHTML = '';
     const color = habito.color || '#6C63FF';
+    const esDark = document.documentElement.classList.contains('dark');
     const hoy = new Date();
+
     const inicio = new Date(hoy);
     inicio.setDate(hoy.getDate() - 90);
     inicio.setDate(inicio.getDate() - inicio.getDay());
 
+    // Construir columnas por semana
     let diaActual = new Date(inicio);
     let semanaActual = [];
     const columnas = [];
@@ -1605,6 +2047,7 @@ function generarMapaActividad(habito) {
         const fechaStr = fechaComoTexto(diaActual.getFullYear(), diaActual.getMonth(), diaActual.getDate());
         semanaActual.push({
             fechaStr,
+            mes: diaActual.getMonth(),
             tieneRegistro: habito.registros.includes(fechaStr),
             esFuturo: diaActual > hoy
         });
@@ -1616,28 +2059,110 @@ function generarMapaActividad(habito) {
     }
     if (semanaActual.length > 0) columnas.push(semanaActual);
 
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const diasLabels = ['D','L','M','X','J','V','S'];
+
+    // Wrapper con flex para días + grid
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.gap = '4px';
+    wrapper.style.overflowX = 'auto';
+
+    // Columna de etiquetas de días
+    const labelsCol = document.createElement('div');
+    labelsCol.style.display = 'flex';
+    labelsCol.style.flexDirection = 'column';
+    labelsCol.style.gap = '3px';
+    labelsCol.style.flexShrink = '0';
+    labelsCol.style.marginTop = '16px'; // espacio para la fila de meses
+
+    [0,1,2,3,4,5,6].forEach(i => {
+        const lbl = document.createElement('div');
+        lbl.style.height = '12px';
+        lbl.style.lineHeight = '12px';
+        lbl.style.fontSize = '9px';
+        lbl.style.color = esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8';
+        lbl.style.width = '12px';
+        lbl.style.textAlign = 'center';
+        lbl.innerText = diasLabels[i];
+        labelsCol.appendChild(lbl);
+    });
+
+    wrapper.appendChild(labelsCol);
+
+    // Contenedor del grid con meses arriba
+    const gridWrapper = document.createElement('div');
+    gridWrapper.style.display = 'flex';
+    gridWrapper.style.flexDirection = 'column';
+    gridWrapper.style.gap = '3px';
+    gridWrapper.style.overflowX = 'auto';
+
+    // Fila de meses
+    const mesesRow = document.createElement('div');
+    mesesRow.style.display = 'flex';
+    mesesRow.style.gap = '3px';
+    mesesRow.style.height = '13px';
+
+    let ultimoMes = -1;
+    columnas.forEach(semana => {
+        const mesActual = semana[0]?.mes;
+        const lbl = document.createElement('div');
+        lbl.style.width = '12px';
+        lbl.style.fontSize = '9px';
+        lbl.style.color = esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8';
+        lbl.style.flexShrink = '0';
+        lbl.style.whiteSpace = 'nowrap';
+        if (mesActual !== ultimoMes) {
+            lbl.innerText = meses[mesActual];
+            lbl.style.width = '24px';
+            ultimoMes = mesActual;
+        }
+        mesesRow.appendChild(lbl);
+    });
+    gridWrapper.appendChild(mesesRow);
+
+    // Grid de celdas
+    const grid = document.createElement('div');
+    grid.style.display = 'flex';
+    grid.style.gap = '3px';
+
     columnas.forEach(semana => {
         const col = document.createElement('div');
         col.style.display = 'flex';
         col.style.flexDirection = 'column';
         col.style.gap = '3px';
+
         semana.forEach(({ tieneRegistro, esFuturo }) => {
             const celda = document.createElement('div');
             celda.style.width = '12px';
             celda.style.height = '12px';
             celda.style.borderRadius = '3px';
             celda.style.flexShrink = '0';
-            const esDarkMapa = document.documentElement.classList.contains('dark');
-            celda.style.background = esFuturo ? 'transparent' : tieneRegistro ? color : (esDarkMapa ? '#2a2a2a' : '#e2e8f0');
+            celda.style.background = esFuturo ? 'transparent'
+                : tieneRegistro ? color
+                : (esDark ? '#2a2a2a' : '#e2e8f0');
             col.appendChild(celda);
         });
         grid.appendChild(col);
     });
 
-    setTimeout(() => {
-        const mapa = document.getElementById('mapa-actividad');
-        mapa.scrollLeft = mapa.scrollWidth;
-    }, 50);
+    gridWrapper.appendChild(grid);
+    wrapper.appendChild(gridWrapper);
+    contenedor.appendChild(wrapper);
+
+    // Leyenda actualizada
+    const leyenda = document.createElement('div');
+    leyenda.style.cssText = 'display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:8px;';
+    leyenda.innerHTML = `
+        <span style="font-size:10px; color:${esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}">Sin completar</span>
+        <div style="width:12px;height:12px;border-radius:3px;background:${esDark ? '#2a2a2a' : '#e2e8f0'}"></div>
+        <div style="width:12px;height:12px;border-radius:3px;background:${color}"></div>
+        <span style="font-size:10px; color:${esDark ? 'rgba(255,255,255,0.3)' : '#94a3b8'}">Completado</span>
+    `;
+    contenedor.appendChild(leyenda);
+
+    // Auto-scroll al final
+    setTimeout(() => { contenedor.scrollLeft = contenedor.scrollWidth; }, 50);
 }
 
 function generarUltimosRegistros(habito) {
@@ -1667,6 +2192,242 @@ function generarUltimosRegistros(habito) {
             </div>
         `;
     });
+}
+
+// ============================================================
+// LOGROS / BADGES
+// ============================================================
+
+const LOGROS = [
+    {
+        id: 'primer_paso',
+        emoji: '🔥',
+        nombre: 'Primer paso',
+        descripcion: 'Completa un hábito por primera vez',
+        check: () => misHabitos.some(h => h.registros.length > 0)
+    },
+    {
+        id: 'en_racha',
+        emoji: '🔥',
+        nombre: 'En racha',
+        descripcion: '7 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 7)
+    },
+    {
+        id: 'imparable',
+        emoji: '🔥',
+        nombre: 'Imparable',
+        descripcion: '30 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 30)
+    },
+    {
+        id: 'leyenda',
+        emoji: '🔥',
+        nombre: 'Leyenda',
+        descripcion: '100 días consecutivos en cualquier hábito',
+        check: () => misHabitos.some(h => calcularRacha(h) >= 100)
+    },
+    {
+        id: 'semana_perfecta',
+        emoji: '⭐',
+        nombre: 'Semana perfecta',
+        descripcion: 'Completa todos tus hábitos 7 días seguidos',
+        check: () => {
+            if (misHabitos.length === 0) return false;
+            const hoy = new Date();
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(hoy);
+                d.setDate(hoy.getDate() - i);
+                const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
+                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
+                if (habitosDelDia.length === 0) return false;
+                const todosCompletados = habitosDelDia.every(h => h.registros.includes(fecha));
+                if (!todosCompletados) return false;
+            }
+            return true;
+        }
+    },
+    {
+        id: 'mes_solido',
+        emoji: '⭐',
+        nombre: 'Mes sólido',
+        descripcion: 'Al menos 80% de tus hábitos completados por 30 días',
+        check: () => {
+            if (misHabitos.length === 0) return false;
+            const hoy = new Date();
+            let diasCumplidos = 0;
+            for (let i = 0; i < 30; i++) {
+                const d = new Date(hoy);
+                d.setDate(hoy.getDate() - i);
+                const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
+                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
+                if (habitosDelDia.length === 0) continue;
+                const completados = habitosDelDia.filter(h => h.registros.includes(fecha)).length;
+                if (completados / habitosDelDia.length >= 0.8) diasCumplidos++;
+            }
+            return diasCumplidos >= 30;
+        }
+    },
+    {
+        id: 'coleccionista',
+        emoji: '💎',
+        nombre: 'Coleccionista',
+        descripcion: 'Crea 5 hábitos',
+        check: () => misHabitos.length >= 5
+    },
+    {
+        id: 'centenario',
+        emoji: '💎',
+        nombre: 'Centenario',
+        descripcion: 'Registra 100 completados en total',
+        check: () => misHabitos.reduce((sum, h) => sum + h.registros.length, 0) >= 100
+    },
+    {
+        id: 'veterano',
+        emoji: '💎',
+        nombre: 'Veterano',
+        descripcion: 'Registra 500 completados en total',
+        check: () => misHabitos.reduce((sum, h) => sum + h.registros.length, 0) >= 500
+    },
+    {
+        id: 'bienvenido',
+        emoji: '🌱',
+        nombre: 'Bienvenido',
+        descripcion: 'Primer día usando Habify',
+        check: () => true
+    },
+    {
+        id: 'un_mes',
+        emoji: '🌱',
+        nombre: 'Un mes contigo',
+        descripcion: '30 días desde tu registro',
+        check: () => {
+            if (!usuarioActual?.fecha_registro) return false;
+            const fechaRegistro = new Date(usuarioActual.fecha_registro + 'T00:00:00');
+            const dias = Math.floor((new Date() - fechaRegistro) / 86400000);
+            return dias >= 30;
+        }
+    },
+    {
+        id: 'habify_pro',
+        emoji: '🌱',
+        nombre: 'Habify Pro',
+        descripcion: '90 días desde tu registro',
+        check: () => {
+            if (!usuarioActual?.fecha_registro) return false;
+            const fechaRegistro = new Date(usuarioActual.fecha_registro + 'T00:00:00');
+            const dias = Math.floor((new Date() - fechaRegistro) / 86400000);
+            return dias >= 90;
+        }
+    }
+];
+
+function abrirLogros() {
+    const desbloqueados = obtenerLogrosDesbloqueados();
+    const idsDesbloqueados = desbloqueados.map(l => l.id);
+
+    const resumen = document.getElementById('logros-resumen');
+    if (resumen) resumen.innerText = `${desbloqueados.length} de ${LOGROS.length} desbloqueados`;
+
+    const lista = document.getElementById('lista-logros');
+    lista.innerHTML = '';
+
+    // Primero los desbloqueados, luego los bloqueados
+    const ordenados = [...LOGROS].sort((a, b) => {
+        const aDesbloqueado = idsDesbloqueados.includes(a.id);
+        const bDesbloqueado = idsDesbloqueados.includes(b.id);
+        if (aDesbloqueado && !bDesbloqueado) return -1;
+        if (!aDesbloqueado && bDesbloqueado) return 1;
+        return 0;
+    });
+
+    ordenados.forEach(logro => {
+        const desbloqueado = idsDesbloqueados.includes(logro.id);
+        const esDark = document.documentElement.classList.contains('dark');
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-3 p-4 rounded-2xl border transition-all card-shadow';
+        div.style.background = desbloqueado
+            ? (esDark ? 'rgba(108,99,255,0.12)' : 'rgba(108,99,255,0.06)')
+            : (esDark ? '#1a1a1a' : '#f8fafc');
+        div.style.borderColor = desbloqueado
+            ? 'rgba(108,99,255,0.25)'
+            : (esDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0');
+        div.style.opacity = desbloqueado ? '1' : '0.45';
+
+        div.innerHTML = `
+            <span style="font-size:28px; flex-shrink:0;">${logro.emoji}</span>
+            <div style="flex:1; min-width:0;">
+                <p class="text-sm font-bold text-black dark:text-white">${logro.nombre}</p>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">${logro.descripcion}</p>
+            </div>
+            ${desbloqueado
+                ? `<div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:#6C63FF">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                   </div>`
+                : `<div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-200 dark:bg-white/10">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                   </div>`
+            }
+        `;
+        lista.appendChild(div);
+    });
+
+    abrirPantallaAnimada('pantalla-logros');
+}
+
+function cerrarLogros() {
+    cerrarPantallaAnimada('pantalla-logros');
+}
+function obtenerLogrosDesbloqueados() {
+    return LOGROS.filter(l => {
+        try { return l.check(); } catch { return false; }
+    });
+}
+
+function verificarNuevosLogros() {
+    const yaVistos = JSON.parse(localStorage.getItem('habify_logros_vistos') || '[]');
+    const desbloqueados = obtenerLogrosDesbloqueados();
+
+    desbloqueados.forEach(logro => {
+        if (!yaVistos.includes(logro.id)) {
+            yaVistos.push(logro.id);
+            localStorage.setItem('habify_logros_vistos', JSON.stringify(yaVistos));
+            mostrarNotificacionLogro(logro);
+        }
+    });
+}
+
+function mostrarNotificacionLogro(logro) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 20px; left: 16px; right: 16px; z-index: 300;
+        background: #6C63FF; color: white; border-radius: 20px;
+        padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 8px 32px rgba(108,99,255,0.45);
+        animation: slideDown 0.35s cubic-bezier(0.32,0.72,0,1) forwards;
+        transform: translateY(-100%);
+    `;
+    toast.innerHTML = `
+        <span style="font-size:28px; flex-shrink:0;">${logro.emoji}</span>
+        <div>
+            <p style="font-size:11px; font-weight:700; opacity:0.75; text-transform:uppercase; letter-spacing:0.05em;">¡Logro desbloqueado!</p>
+            <p style="font-size:14px; font-weight:800; margin-top:1px;">${logro.nombre}</p>
+            <p style="font-size:12px; opacity:0.75; margin-top:1px;">${logro.descripcion}</p>
+        </div>
+    `;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+        toast.style.transform = 'translateY(-120%)';
+        toast.style.opacity = '0';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 350);
+    }, 3500);
 }
 
 // ============================================================
