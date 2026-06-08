@@ -325,7 +325,10 @@ async function cargarDatosUsuario() {
                 registrosDB
                     .filter(r => r.habito_id === h.id && r.hora)
                     .map(r => [r.fecha, r.hora])
-            )
+            ),
+            diasSemana: h.dias_semana
+                ? h.dias_semana.split(',').map(Number)
+                : []
         }));
 
         await cargarTodasLasNotas();
@@ -563,8 +566,14 @@ function renderizarHabitos() {
     const esHoyReferencia = fechaReferencia === hoyComoTexto();
 
     // Ordenar: pinneados → no completados → completados (dentro de cada grupo, orden de creación)
+    const diaReferencia = new Date(fechaReferencia + 'T00:00:00').getDay();
+
     const habitosOrdenados = [...misHabitos]
-        .filter(h => h.fechaCreacion <= fechaReferencia)
+        .filter(h => {
+            if (h.fechaCreacion > fechaReferencia) return false;
+            if (!h.diasSemana || h.diasSemana.length === 0) return true;
+            return h.diasSemana.includes(diaReferencia);
+        })
         .sort((a, b) => {
             const aPin = a.pinneado ? 0 : 1;
             const bPin = b.pinneado ? 0 : 1;
@@ -892,6 +901,7 @@ function abrirModal() {
         b.style.color = '';
     });
     mostrarCategoriaEmoji('deporte', document.querySelector('.cat-emoji-btn'));
+    resetearSelectorDias();
 }
 
 function cerrarModal() {
@@ -1048,18 +1058,45 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     cargarNotaDia(fechaStr).catch(console.error);
 }
 
+const MENSAJES_DIA_COMPLETO = [
+    '¡Todo listo por hoy! Mereces un descanso 🎉',
+    '¡Día perfecto! Tú puedes con todo 💪',
+    '¡Lo lograste! Hoy fue un gran día 🌟',
+    '¡Imparable! Todos los hábitos completados 🔥',
+    '¡Eres una máquina! Día completado 🚀',
+    '¡Increíble disciplina! Sigue así 🏆',
+    '¡Hoy ganaste! Todos tus hábitos hechos ✨',
+];
+
 function actualizarResumenHoy() {
     const el = document.getElementById('texto-resumen-hoy');
     if (!el) return;
 
-    const total = misHabitos.length;
+    const hoyStr = hoyComoTexto();
+    const total = misHabitos.filter(h => {
+        if (!h.diasSemana || h.diasSemana.length === 0) return true;
+        const diaSemana = new Date().getDay();
+        return h.diasSemana.includes(diaSemana);
+    }).length;
+
     if (total === 0) {
         el.innerText = "No tienes hábitos aún. ¡Crea uno!";
         return;
     }
 
-    const completadosHoy = misHabitos.filter(h => completadoHoy(h)).length;
-    el.innerText = `${completadosHoy} de ${total} hábitos completados hoy`;
+    const diaSemanaHoy = new Date().getDay();
+    const completadosHoy = misHabitos.filter(h => {
+        if (!completadoHoy(h)) return false;
+        if (!h.diasSemana || h.diasSemana.length === 0) return true;
+        return h.diasSemana.includes(diaSemanaHoy);
+    }).length;
+
+    if (completadosHoy === total) {
+        const idx = Math.floor(Math.random() * MENSAJES_DIA_COMPLETO.length);
+        el.innerText = MENSAJES_DIA_COMPLETO[idx];
+    } else {
+        el.innerText = `${completadosHoy} de ${total} hábitos completados hoy`;
+    }
 }
 
 // ============================================================
@@ -1645,7 +1682,8 @@ function mostrarResumenDiaTira(fechaStr) {
     const textoResumen = document.getElementById('texto-resumen-hoy');
     if (textoResumen) {
         if (esHoy) {
-            textoResumen.innerText = `${completados.length} de ${total} hábitos completados hoy`;
+            actualizarResumenHoy();
+            return;
         } else {
             const numeroDia = parseInt(fechaStr.split('-')[2]);
             const mes = parseInt(fechaStr.split('-')[1]) - 1;
@@ -1925,6 +1963,15 @@ function seleccionarColor(color, btn) {
     const tipoActual = document.getElementById('habito-tipo').value;
     seleccionarTipoHabito(tipoActual);
 
+    // Actualizar días seleccionados con el nuevo color
+    document.querySelectorAll('.dia-semana-btn').forEach(btn => {
+        const dia = parseInt(btn.dataset.dia);
+        if (diasSeleccionados.includes(dia)) {
+            btn.style.background = color;
+            btn.style.borderColor = color;
+        }
+    });
+
     // Reset todos los botones de color
     document.querySelectorAll('.color-btn').forEach(b => {
         b.style.outline = 'none';
@@ -2100,8 +2147,9 @@ async function crearHabitoNuevo() {
         return;
     }
 
+    const diasSemanaStr = diasSeleccionados.length > 0 ? diasSeleccionados.join(',') : null;
     const resultado = await crearHabitoSupabase(
-        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color, recordatorio, tipo, unidad, metaCantidad
+        usuarioActual.id, nombre, emoji, meta, hoyComoTexto(), color, recordatorio, tipo, unidad, metaCantidad, diasSemanaStr
     );
 
     if (resultado.error) {
@@ -2125,7 +2173,11 @@ async function crearHabitoNuevo() {
         metaCantidad: resultado.habito.meta_cantidad || null,
         pinneado: false,
         registros: [],
-        cantidades: {}
+        cantidades: {},
+        horas: {},
+        diasSemana: resultado.habito.dias_semana
+            ? resultado.habito.dias_semana.split(',').map(Number)
+            : []
     };
 
     misHabitos.push(nuevoHabito);
@@ -2288,6 +2340,8 @@ function abrirEditarHabito() {
 
     // Precargar tipo
     seleccionarTipoHabito(habito.tipo || 'check');
+    // Precargar días
+    precargarDiasSemana(habito.diasSemana || [], habito.color || '#6C63FF');
     if (habito.tipo === 'contador') {
         if (habito.metaCantidad) document.getElementById('habito-meta-cantidad').value = habito.metaCantidad;
         if (habito.unidad) document.getElementById('habito-unidad').value = habito.unidad;
@@ -2340,7 +2394,8 @@ async function guardarEdicionHabito() {
     btn.disabled = true;
 
     const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
-    const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio, tipo, unidad, metaCantidad);
+    const diasSemanaStr = diasSeleccionados.length > 0 ? diasSeleccionados.join(',') : null;
+    const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio, tipo, unidad, metaCantidad, diasSemanaStr);
 
     if (resultado.error) {
         alert('Error al guardar. Intenta de nuevo.');
@@ -2360,6 +2415,7 @@ async function guardarEdicionHabito() {
         habito.tipo = tipo;
         habito.unidad = unidad;
         habito.metaCantidad = metaCantidad;
+        habito.diasSemana = diasSeleccionados.length > 0 ? [...diasSeleccionados] : [];
         habitoDetalleActual = habito;
     }
 
@@ -3209,6 +3265,74 @@ function generarPatronDias(habito) {
     }
 
     insightTexto.innerText = insight;
+}
+// ============================================================
+// SELECTOR DE DÍAS DE LA SEMANA
+// ============================================================
+let diasSeleccionados = [];
+
+function toggleDiaSemana(dia, btn) {
+    const color = document.getElementById('habito-color').value || '#6C63FF';
+    const idx = diasSeleccionados.indexOf(dia);
+
+    if (idx === -1) {
+        diasSeleccionados.push(dia);
+        btn.style.background = color;
+        btn.style.color = 'white';
+        btn.style.borderColor = color;
+    } else {
+        diasSeleccionados.splice(idx, 1);
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+    }
+
+    const slider = document.getElementById('slider-meta');
+    const container = document.getElementById('slider-meta-container');
+
+    if (diasSeleccionados.length > 0) {
+        // Bloquear slider y ajustar meta
+        slider.value = diasSeleccionados.length;
+        slider.disabled = true;
+        container.style.opacity = '0.4';
+        container.style.pointerEvents = 'none';
+        document.getElementById('habito-meta').value = diasSeleccionados.length;
+        actualizarSliderMeta(diasSeleccionados.length);
+    } else {
+        // Desbloquear slider
+        slider.disabled = false;
+        container.style.opacity = '1';
+        container.style.pointerEvents = '';
+    }
+}
+
+function resetearSelectorDias() {
+    diasSeleccionados = [];
+    document.querySelectorAll('.dia-semana-btn').forEach(btn => {
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+    });
+    const slider = document.getElementById('slider-meta');
+    const container = document.getElementById('slider-meta-container');
+    if (slider) slider.disabled = false;
+    if (container) { container.style.opacity = '1'; container.style.pointerEvents = ''; }
+}
+
+function precargarDiasSemana(dias, color) {
+    diasSeleccionados = [...dias];
+    document.querySelectorAll('.dia-semana-btn').forEach(btn => {
+        const dia = parseInt(btn.dataset.dia);
+        if (dias.includes(dia)) {
+            btn.style.background = color;
+            btn.style.color = 'white';
+            btn.style.borderColor = color;
+        } else {
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }
+    });
 }
 // ============================================================
 // ARRANCAR

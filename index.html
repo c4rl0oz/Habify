@@ -593,6 +593,21 @@
             <input type="hidden" id="habito-emoji" value="🏃">
         </div>
 
+        <!-- Selector de días -->
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Días de la semana</label>
+            <div class="flex justify-between gap-1.5" id="selector-dias">
+                <button type="button" data-dia="1" onclick="toggleDiaSemana(1, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">L</button>
+                <button type="button" data-dia="2" onclick="toggleDiaSemana(2, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">M</button>
+                <button type="button" data-dia="3" onclick="toggleDiaSemana(3, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">M</button>
+                <button type="button" data-dia="4" onclick="toggleDiaSemana(4, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">J</button>
+                <button type="button" data-dia="5" onclick="toggleDiaSemana(5, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">V</button>
+                <button type="button" data-dia="6" onclick="toggleDiaSemana(6, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">S</button>
+                <button type="button" data-dia="0" onclick="toggleDiaSemana(0, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">D</button>
+            </div>
+            <p class="text-[10px] text-slate-400 font-medium">Sin selección = todos los días</p>
+        </div>
+
         <!-- Meta semanal -->
         <div class="space-y-4">
             <div class="flex justify-between items-center">
@@ -600,7 +615,7 @@
                 <span id="meta-valor-label" class="text-sm font-black text-black dark:text-white">1 día / sem</span>
             </div>
 
-            <div class="relative px-1">
+            <div id="slider-meta-container" class="relative px-1">
                 <input type="range" id="slider-meta" min="1" max="7" value="1" step="1"
                 oninput="actualizarSliderMeta(this.value)"
                 class="w-full cursor-pointer"

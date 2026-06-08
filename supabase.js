@@ -60,7 +60,7 @@ async function obtenerHabitosSupabase(usuarioId) {
     return await res.json();
 }
 
-async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF', recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null) {
+async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaCreacion, color = '#6C63FF', recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null, diasSemana = null) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
@@ -75,18 +75,19 @@ async function crearHabitoSupabase(usuarioId, nombre, emoji, metaSemanal, fechaC
             orden: 0,
             tipo,
             unidad,
-            meta_cantidad: metaCantidad
+            meta_cantidad: metaCantidad,
+            dias_semana: diasSemana
         })
     });
     const data = await res.json();
     if (!res.ok) return { error: 'Error al crear hábito.' };
     return { habito: data[0] };
 }
-async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color, recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null) {
+async function editarHabitoSupabase(habitoId, nombre, emoji, metaSemanal, color, recordatorio = null, tipo = 'check', unidad = null, metaCantidad = null, diasSemana = null) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
         method: 'PATCH',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ nombre, emoji, meta_semanal: metaSemanal, color, recordatorio, tipo, unidad, meta_cantidad: metaCantidad })
+        body: JSON.stringify({ nombre, emoji, meta_semanal: metaSemanal, color, recordatorio, tipo, unidad, meta_cantidad: metaCantidad, dias_semana: diasSemana })
     });
     const data = await res.json();
     if (!res.ok) return { error: 'Error al editar hábito.' };
