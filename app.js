@@ -194,6 +194,278 @@ function inicializarFeedbackGlobal() {
 }
 
 // ============================================================
+// FOTOS DE HÁBITOS
+// ============================================================
+let registroFotoActual = null; // { id, habitoId, fecha }
+let fotoBlob = null;
+
+// — SHEET AL MARCAR —
+
+function abrirSheetFoto(registroId, habitoId, fecha) {
+    registroFotoActual = { id: registroId, habitoId, fecha };
+    fotoBlob = null;
+    document.getElementById('sheet-foto-preview').classList.add('hidden');
+    document.getElementById('btn-guardar-foto').classList.add('hidden');
+    document.getElementById('sheet-foto').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('sheet-foto-inner').style.transform = 'translateY(0)';
+    }, 10);
+}
+
+function actualizarBotonFotoDetalle(habito) {
+    const container = document.getElementById('detalle-btn-foto-container');
+    const texto = document.getElementById('detalle-btn-foto-texto');
+    if (!container || !texto) return;
+    const hoy = hoyComoTexto();
+    const completadoHoyHabito = habito.registros.includes(hoy);
+    const tieneFoto = !!habito.fotos?.[hoy];
+    if (!completadoHoyHabito || tieneFoto) {
+        container.classList.add('hidden');
+        return;
+    }
+    container.classList.remove('hidden');
+    texto.textContent = 'Agregar foto de hoy';
+}
+
+function abrirSheetFotoDesdeDetalle() {
+    if (!habitoDetalleActual) return;
+    const hoy = hoyComoTexto();
+    const registroId = habitoDetalleActual._registroIdMap?.[hoy];
+    if (!registroId) return;
+    abrirSheetFoto(registroId, habitoDetalleActual.id, hoy);
+}
+
+function cerrarSheetFoto() {
+    document.getElementById('sheet-foto-inner').style.transform = 'translateY(100%)';
+    setTimeout(() => {
+        document.getElementById('sheet-foto').classList.add('hidden');
+        registroFotoActual = null;
+        fotoBlob = null;
+    }, 300);
+}
+
+function seleccionarFoto(fuente) {
+    const input = document.getElementById('input-foto');
+    input.value = '';
+    if (fuente === 'camara') {
+        input.setAttribute('capture', 'environment');
+    } else {
+        input.removeAttribute('capture');
+    }
+    input.click();
+}
+
+function comprimirImagen(archivo, callback) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxSize = 1200;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+                if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                else { w = Math.round(w * maxSize / h); h = maxSize; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob(blob => callback(blob, e.target.result), 'image/jpeg', 0.80);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(archivo);
+}
+
+function onFotoSeleccionada(input) {
+    const archivo = input.files[0];
+    if (!archivo) return;
+    comprimirImagen(archivo, (blob, dataUrl) => {
+        fotoBlob = blob;
+        document.getElementById('sheet-foto-img').src = dataUrl;
+        document.getElementById('sheet-foto-preview').classList.remove('hidden');
+        document.getElementById('btn-guardar-foto').classList.remove('hidden');
+    });
+    input.value = '';
+}
+
+async function guardarFotoSheet() {
+    if (!fotoBlob || !registroFotoActual || !usuarioActual) return;
+    const btn = document.getElementById('btn-guardar-foto');
+    btn.textContent = 'Subiendo...';
+    btn.disabled = true;
+
+    const url = await subirFotoRegistro(registroFotoActual.id, fotoBlob, usuarioActual.id);
+    if (url) {
+        await guardarFotoEnRegistro(registroFotoActual.id, url);
+        // Guardar en memoria
+        const habito = misHabitos.find(h => h.id === registroFotoActual.habitoId);
+        if (habito) {
+            habito.fotos = habito.fotos || {};
+            habito.fotos[registroFotoActual.fecha] = url;
+            habito._registroIdMap = habito._registroIdMap || {};
+            habito._registroIdMap[registroFotoActual.fecha] = registroFotoActual.id;
+        }
+    }
+
+    btn.textContent = 'Guardar foto ✓';
+    btn.disabled = false;
+    cerrarSheetFoto();
+    if (habitoDetalleActual) {
+        generarUltimosRegistros(habitoDetalleActual);
+        actualizarBotonFotoDetalle(habitoDetalleActual);
+    }
+    // Re-renderizar histórico si está abierto
+    const hist = document.getElementById('pantalla-historico-fotos');
+    if (hist && !hist.classList.contains('hidden')) {
+        generarHistoricoFotos();
+    }
+}
+
+// — VISOR DE FOTO COMPLETA —
+
+let visorRegistroActual = null; // { registroId, habitoId, fecha }
+
+function abrirVisorFoto(url, nombreHabito, fecha, registroId, habitoId) {
+    visorRegistroActual = { registroId, habitoId, fecha };
+    document.getElementById('visor-foto-img').src = url;
+    document.getElementById('visor-foto-habito').textContent = nombreHabito;
+    const d = new Date(fecha + 'T00:00:00');
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    document.getElementById('visor-foto-fecha').textContent =
+        `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+    const visor = document.getElementById('visor-foto');
+    visor.classList.remove('hidden');
+    visor.style.display = 'flex';
+}
+
+function cerrarVisorFoto() {
+    const visor = document.getElementById('visor-foto');
+    visor.classList.add('hidden');
+    visor.style.display = 'none';
+    visorRegistroActual = null;
+}
+
+async function eliminarFotoDesdeVisor() {
+    if (!visorRegistroActual) return;
+    if (!confirm('¿Eliminar esta foto?')) return;
+    const { registroId, habitoId, fecha } = visorRegistroActual;
+    await eliminarFotoDeRegistro(registroId);
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (habito && habito.fotos) delete habito.fotos[fecha];
+    cerrarVisorFoto();
+    if (habitoDetalleActual && habitoDetalleActual.id === habitoId) {
+        generarUltimosRegistros(habitoDetalleActual);
+        actualizarBotonFotoDetalle(habitoDetalleActual);
+    }
+    const hist = document.getElementById('pantalla-historico-fotos');
+    if (hist && !hist.classList.contains('hidden')) generarHistoricoFotos();
+}
+
+async function cambiarFotoDesdeVisor() {
+    if (!visorRegistroActual) return;
+    registroFotoActual = {
+        id: visorRegistroActual.registroId,
+        habitoId: visorRegistroActual.habitoId,
+        fecha: visorRegistroActual.fecha
+    };
+    cerrarVisorFoto();
+    fotoBlob = null;
+    document.getElementById('sheet-foto-preview').classList.add('hidden');
+    document.getElementById('btn-guardar-foto').classList.add('hidden');
+    document.getElementById('sheet-foto').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('sheet-foto-inner').style.transform = 'translateY(0)';
+    }, 10);
+}
+
+// — HISTÓRICO DE FOTOS —
+
+function abrirHistoricoFotos() {
+    generarHistoricoFotos();
+    abrirPantallaAnimada('pantalla-historico-fotos');
+}
+
+function cerrarHistoricoFotos() {
+    cerrarPantallaAnimada('pantalla-historico-fotos');
+}
+
+function generarHistoricoFotos() {
+    const contenedor = document.getElementById('historico-fotos-contenido');
+    contenedor.innerHTML = '';
+
+    // Recopilar todos los registros con foto
+    const todasLasFotos = [];
+    for (const habito of misHabitos) {
+        if (!habito.fotos) continue;
+        for (const [fecha, url] of Object.entries(habito.fotos)) {
+            todasLasFotos.push({ fecha, url, habito });
+        }
+    }
+
+    if (todasLasFotos.length === 0) {
+        contenedor.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-20 gap-3">
+                <p class="text-4xl">📷</p>
+                <p class="text-sm font-bold text-slate-400">Aún no tienes fotos guardadas</p>
+                <p class="text-xs text-slate-400">Aparecerán aquí cuando marques hábitos con foto</p>
+            </div>`;
+        return;
+    }
+
+    // Ordenar por fecha descendente
+    todasLasFotos.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+    // Agrupar por mes
+    const porMes = {};
+    const mesesNombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    for (const item of todasLasFotos) {
+        const d = new Date(item.fecha + 'T00:00:00');
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const label = `${mesesNombres[d.getMonth()]} ${d.getFullYear()}`;
+        if (!porMes[key]) porMes[key] = { label, items: [] };
+        porMes[key].items.push(item);
+    }
+
+    for (const { label, items } of Object.values(porMes)) {
+        const seccion = document.createElement('div');
+        seccion.className = 'space-y-3';
+
+        // Header del mes
+        seccion.innerHTML = `<p class="text-xs font-black text-slate-400 uppercase tracking-widest">${label}</p>`;
+
+        // Grid de fotos
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-2';
+
+        for (const { fecha, url, habito } of items) {
+            const d = new Date(fecha + 'T00:00:00');
+            const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const etiqueta = `${diasSemana[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+            const registroId = habito._registroIdMap?.[fecha];
+
+            const card = document.createElement('div');
+            card.className = 'relative rounded-2xl overflow-hidden active:scale-95 transition-all cursor-pointer';
+            card.style.aspectRatio = '1';
+            card.onclick = () => abrirVisorFoto(url, `${habito.emoji} ${habito.nombre}`, fecha, registroId, habito.id);
+            card.innerHTML = `
+                <img src="${url}" class="w-full h-full object-cover">
+                <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 p-2.5">
+                    <p class="text-white text-[11px] font-black leading-tight">${habito.emoji} ${habito.nombre}</p>
+                    <p class="text-white/70 text-[10px] font-medium">${etiqueta}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+
+        seccion.appendChild(grid);
+        contenedor.appendChild(seccion);
+    }
+}
+
+// ============================================================
 // ANIMACIONES DE PANTALLA
 // ============================================================
 function abrirPantallaAnimada(id) {
@@ -510,6 +782,16 @@ async function cargarDatosUsuario() {
                 registrosDB
                     .filter(r => r.habito_id === h.id && r.hora)
                     .map(r => [r.fecha, r.hora])
+            ),
+            fotos: Object.fromEntries(
+                registrosDB
+                    .filter(r => r.habito_id === h.id && r.foto_url)
+                    .map(r => [r.fecha, r.foto_url])
+            ),
+            _registroIdMap: Object.fromEntries(
+                registrosDB
+                    .filter(r => r.habito_id === h.id)
+                    .map(r => [r.fecha, r.id])
             ),
             diasSemana: h.dias_semana
                 ? h.dias_semana.split(',').map(Number)
@@ -974,14 +1256,27 @@ async function toggleHabitoDia(habitoId, fechaStr) {
     const completado = habito.registros.includes(fechaStr);
 
     if (completado) {
+        const tieneFoto = !!habito.fotos?.[fechaStr];
+        if (tieneFoto) {
+            const ok = confirm('Al desmarcar este hábito se eliminará la foto guardada para este día. ¿Continuar?');
+            if (!ok) return;
+            const regId = habito._registroIdMap?.[fechaStr];
+            if (regId) await eliminarFotoDeRegistro(regId);
+            delete habito.fotos[fechaStr];
+        }
         await desmarcarHabitoSupabase(habitoId, fechaStr);
         habito.registros = habito.registros.filter(f => f !== fechaStr);
         sonarUncheck();
     } else {
-        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        const registroId = await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
+        if (registroId) {
+            habito._registroIdMap = habito._registroIdMap || {};
+            habito._registroIdMap[fechaStr] = registroId;
+        }
         if (navigator.vibrate) navigator.vibrate(30);
         sonarCheck();
+        if (registroId) setTimeout(() => abrirSheetFoto(registroId, habitoId, fechaStr), 400);
     }
 
     animarCargaInicial = false;
@@ -1788,19 +2083,38 @@ async function toggleHabitoHoy(id) {
     const fechaRef = diaSeleccionadoTira || hoyComoTexto();
 
     if (habito.registros.includes(fechaRef)) {
+        const tieneFoto = !!habito.fotos?.[fechaRef];
+        if (tieneFoto) {
+            const ok = confirm('Al desmarcar este hábito se eliminará la foto guardada para este día. ¿Continuar?');
+            if (!ok) return;
+            const regId = habito._registroIdMap?.[fechaRef];
+            if (regId) await eliminarFotoDeRegistro(regId);
+            delete habito.fotos[fechaRef];
+        }
         await desmarcarHabitoSupabase(id, fechaRef);
         habito.registros = habito.registros.filter(f => f !== fechaRef);
         sonarUncheck();
     } else {
-        await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
+        const registroId = await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
         habito.registros.push(fechaRef);
+        if (registroId) {
+            habito._registroIdMap = habito._registroIdMap || {};
+            habito._registroIdMap[fechaRef] = registroId;
+        }
         if (navigator.vibrate) navigator.vibrate(50);
         sonarCheck();
+        if (registroId) setTimeout(() => abrirSheetFoto(registroId, id, fechaRef), 400);
     }
 
     animarCargaInicial = false;
     renderizarHabitos();
     verificarDiaPerfecto();
+
+    // Actualizar botón foto si el detalle está abierto
+    if (habitoDetalleActual && habitoDetalleActual.id === id) {
+        generarUltimosRegistros(habitoDetalleActual);
+        actualizarBotonFotoDetalle(habitoDetalleActual);
+    }
 
     setTimeout(() => {
         const btnCheck = document.querySelector(`button[data-habito-id="${id}"]`);
@@ -2393,6 +2707,7 @@ function abrirDetalleHabito(id) {
     generarPatronDias(habito);
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
+    actualizarBotonFotoDetalle(habito);
 
     // Mostrar contador en detalle si aplica
     const contadorDetalle = document.getElementById('detalle-contador');
@@ -2758,28 +3073,78 @@ function generarUltimosRegistros(habito) {
     contenedor.innerHTML = '';
     const color = habito.color || '#6C63FF';
     const registros = [...habito.registros].sort().reverse().slice(0, 10);
-
     if (registros.length === 0) {
         contenedor.innerHTML = `<p class="text-xs text-slate-400 font-medium">Aún no hay registros.</p>`;
         return;
     }
-
     const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const esDark = document.documentElement.classList.contains('dark');
+    const hoy = hoyComoTexto();
 
-    registros.forEach(fecha => {
+    registros.forEach((fecha, index) => {
         const d = new Date(fecha + 'T00:00:00');
-        const esHoy = fecha === hoyComoTexto();
+        const esHoy = fecha === hoy;
         const etiqueta = esHoy ? 'Hoy' : `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
-        const esDark = document.documentElement.classList.contains('dark');
-        contenedor.innerHTML += `
-            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${document.documentElement.classList.contains('dark') ? '#1a1a1a' : color+'10'}; border:1px solid ${document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.10)' : color+'20'};">
-                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></div>
-                <p class="text-sm font-bold text-black dark:text-white flex-1">${etiqueta}</p>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </div>
-        `;
+        const fotoUrl = habito.fotos?.[fecha];
+        const registroId = habito._registroIdMap?.[fecha];
+
+        if (fotoUrl && esHoy) {
+            // Foto de HOY — card grande
+            contenedor.innerHTML += `
+                <div class="rounded-[20px] overflow-hidden active:scale-[0.98] transition-all cursor-pointer"
+                     onclick="abrirVisorFoto('${fotoUrl}', '${habito.emoji} ${habito.nombre}', '${fecha}', '${registroId}', '${habito.id}')">
+                    <div class="relative w-full" style="height:220px;">
+                        <img src="${fotoUrl}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%);"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between">
+                            <div>
+                                <p class="text-white text-xs font-black uppercase tracking-wider opacity-70">Hoy</p>
+                                <p class="text-white text-sm font-bold mt-0.5">${habito.emoji} ${habito.nombre}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="event.stopPropagation(); abrirSheetFoto('${registroId}', '${habito.id}', '${fecha}')"
+                                    class="px-3 py-1.5 rounded-xl text-[11px] font-bold text-white active:scale-90 transition-all"
+                                    style="background:rgba(255,255,255,0.2); backdrop-filter:blur(8px);">
+                                    Cambiar
+                                </button>
+                                <button onclick="event.stopPropagation(); eliminarFotoRegistroDirecto('${registroId}', '${habito.id}', '${fecha}')"
+                                    class="px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-300 active:scale-90 transition-all"
+                                    style="background:rgba(244,63,94,0.2); backdrop-filter:blur(8px);">
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Registro normal — con o sin thumbnail pequeño
+            const thumbHtml = fotoUrl ? `
+                <img src="${fotoUrl}"
+                     class="w-10 h-10 rounded-xl object-cover flex-shrink-0 active:scale-95 transition-all cursor-pointer"
+                     onclick="abrirVisorFoto('${fotoUrl}', '${habito.emoji} ${habito.nombre}', '${fecha}', '${registroId}', '${habito.id}')"
+                     style="border:2px solid ${color}40;">
+            ` : '';
+            contenedor.innerHTML += `
+                <div class="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                     style="background:${esDark ? '#1a1a1a' : color+'10'}; border:1px solid ${esDark ? 'rgba(255,255,255,0.10)' : color+'20'};">
+                    <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></div>
+                    <p class="text-sm font-bold text-black dark:text-white flex-1">${etiqueta}</p>
+                    ${thumbHtml}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+            `;
+        }
     });
+}
+async function eliminarFotoRegistroDirecto(registroId, habitoId, fecha) {
+    if (!confirm('¿Eliminar esta foto?')) return;
+    await eliminarFotoDeRegistro(registroId);
+    const habito = misHabitos.find(h => h.id === habitoId);
+    if (habito && habito.fotos) delete habito.fotos[fecha];
+    generarUltimosRegistros(habito);
+    actualizarBotonFotoDetalle(habito);
 }
 
 // ============================================================
