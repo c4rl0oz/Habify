@@ -12,11 +12,23 @@ let notasCacheadas = {};
 // FEEDBACK: SONIDO + VISUAL
 // ============================================================
 let audioCtx = null;
+let audioCompressor = null;
 
 function getAudioCtx() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCompressor = audioCtx.createDynamicsCompressor();
+        audioCompressor.threshold.setValueAtTime(-12, audioCtx.currentTime);
+        audioCompressor.knee.setValueAtTime(6, audioCtx.currentTime);
+        audioCompressor.ratio.setValueAtTime(3, audioCtx.currentTime);
+        audioCompressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+        audioCompressor.release.setValueAtTime(0.15, audioCtx.currentTime);
+        audioCompressor.connect(audioCtx.destination);
+    }
     return audioCtx;
 }
+
+function getDest() { getAudioCtx(); return audioCompressor; }
 
 function crearReverb(ctx, duracion = 0.3, decay = 2.0) {
     const convolver = ctx.createConvolver();
@@ -50,11 +62,11 @@ function sonarAbrirCrear() {
     try {
         const ctx = getAudioCtx();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.65, ctx.currentTime);
-        master.connect(ctx.destination);
-        nota(ctx, master, 440, 0,    0.12, 0.8);   // La
-        nota(ctx, master, 554, 0.1,  0.18, 0.7);   // Do#  — tercera mayor, suena abierto
-        nota(ctx, master, 880, 0.12, 0.10, 0.15);  // La octava — brillo
+        master.gain.setValueAtTime(1.8, ctx.currentTime);
+        master.connect(getDest());
+        nota(ctx, master, 440, 0,    0.12, 1.0);
+        nota(ctx, master, 554, 0.10, 0.18, 0.9);
+        nota(ctx, master, 880, 0.12, 0.10, 0.3);
     } catch(e) {}
 }
 
@@ -63,21 +75,20 @@ function sonarAbrirCrear() {
 function sonarCrearHabito() {
     try {
         const ctx = getAudioCtx();
+        const dest = getDest();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.70, ctx.currentTime);
+        master.gain.setValueAtTime(1.8, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.3, 2.5);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.20, ctx.currentTime);
-        reverb.connect(rvGain); rvGain.connect(ctx.destination);
-        master.connect(ctx.destination);
-        // Mi - Sol# - Si — acorde de Mi mayor, cálido y resuelto
-        nota(ctx, master, 330, 0,    0.22, 0.9);
-        nota(ctx, master, 415, 0.09, 0.20, 0.8);
-        nota(ctx, master, 494, 0.18, 0.28, 1.0);
-        // Con reverb
-        nota(ctx, reverb, 330, 0,    0.22, 0.6);
-        nota(ctx, reverb, 415, 0.09, 0.20, 0.5);
-        nota(ctx, reverb, 494, 0.18, 0.28, 0.7);
+        rvGain.gain.setValueAtTime(0.4, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(dest);
+        master.connect(dest);
+        nota(ctx, master, 330, 0,    0.22, 1.0);
+        nota(ctx, master, 415, 0.09, 0.20, 1.0);
+        nota(ctx, master, 494, 0.18, 0.30, 1.0);
+        nota(ctx, reverb,  330, 0,   0.22, 0.6);
+        nota(ctx, reverb,  415, 0.09,0.20, 0.6);
+        nota(ctx, reverb,  494, 0.18,0.30, 0.7);
     } catch(e) {}
 }
 
@@ -86,18 +97,19 @@ function sonarCrearHabito() {
 function sonarCheck() {
     try {
         const ctx = getAudioCtx();
+        const dest = getDest();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.72, ctx.currentTime);
+        master.gain.setValueAtTime(1.8, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.25, 3.0);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.15, ctx.currentTime);
-        reverb.connect(rvGain); rvGain.connect(ctx.destination);
-        master.connect(ctx.destination);
-        nota(ctx, master, 523, 0,    0.14, 0.9);   // Do
-        nota(ctx, master, 784, 0.1,  0.22, 1.0);   // Sol — quinta justa
-        nota(ctx, master, 1047,0.12, 0.12, 0.2);   // Do octava alta — brillo
-        nota(ctx, reverb,  523, 0,   0.14, 0.6);
-        nota(ctx, reverb,  784, 0.1, 0.22, 0.7);
+        rvGain.gain.setValueAtTime(0.3, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(dest);
+        master.connect(dest);
+        nota(ctx, master, 523,  0,    0.14, 1.0);
+        nota(ctx, master, 784,  0.10, 0.22, 1.0);
+        nota(ctx, master, 1047, 0.12, 0.12, 0.3);
+        nota(ctx, reverb,  523,  0,   0.14, 0.6);
+        nota(ctx, reverb,  784,  0.10,0.22, 0.7);
     } catch(e) {}
 }
 
@@ -107,14 +119,14 @@ function sonarUncheck() {
     try {
         const ctx = getAudioCtx();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.45, ctx.currentTime);
-        master.connect(ctx.destination);
+        master.gain.setValueAtTime(1.2, ctx.currentTime);
+        master.connect(getDest());
         const osc = ctx.createOscillator();
         const g = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(520, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(340, ctx.currentTime + 0.18);
-        g.gain.setValueAtTime(0.9, ctx.currentTime);
+        g.gain.setValueAtTime(1.0, ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
         osc.connect(g); g.connect(master);
         osc.start(); osc.stop(ctx.currentTime + 0.18);
@@ -126,17 +138,17 @@ function sonarUncheck() {
 function sonarMetaContador() {
     try {
         const ctx = getAudioCtx();
+        const dest = getDest();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.75, ctx.currentTime);
+        master.gain.setValueAtTime(1.8, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.35, 2.0);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.22, ctx.currentTime);
-        reverb.connect(rvGain); rvGain.connect(ctx.destination);
-        master.connect(ctx.destination);
-        // Do - Mi - Sol - Do (arpegio mayor rápido)
+        rvGain.gain.setValueAtTime(0.4, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(dest);
+        master.connect(dest);
         [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
-            nota(ctx, master, f, d, 0.20, 0.9);
-            nota(ctx, reverb,  f, d, 0.20, 0.5);
+            nota(ctx, master, f, d, 0.20, 1.0);
+            nota(ctx, reverb,  f, d, 0.20, 0.6);
         });
     } catch(e) {}
 }
@@ -146,22 +158,21 @@ function sonarMetaContador() {
 function sonarDiaPerfecto() {
     try {
         const ctx = getAudioCtx();
+        const dest = getDest();
         const master = ctx.createGain();
-        master.gain.setValueAtTime(0.80, ctx.currentTime);
+        master.gain.setValueAtTime(1.8, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.8, 1.5);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.30, ctx.currentTime);
-        reverb.connect(rvGain); rvGain.connect(ctx.destination);
-        master.connect(ctx.destination);
-        // Arpegio ascendente rápido
+        rvGain.gain.setValueAtTime(0.5, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(dest);
+        master.connect(dest);
         [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
-            nota(ctx, master, f, d, 0.18, 0.8);
-            nota(ctx, reverb,  f, d, 0.18, 0.5);
+            nota(ctx, master, f, d, 0.18, 1.0);
+            nota(ctx, reverb,  f, d, 0.18, 0.6);
         });
-        // Acorde final simultáneo con más cuerpo
         [[523,0.38],[659,0.38],[784,0.38],[1047,0.38]].forEach(([f,d]) => {
-            nota(ctx, master, f, d, 0.60, 0.6);
-            nota(ctx, reverb,  f, d, 0.60, 0.4);
+            nota(ctx, master, f, d, 0.60, 0.8);
+            nota(ctx, reverb,  f, d, 0.60, 0.5);
         });
     } catch(e) {}
 }
