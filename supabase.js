@@ -135,7 +135,38 @@ async function marcarHabitoSupabase(habitoId, usuarioId, fecha) {
         headers: { ...headers, 'Prefer': 'return=representation' },
         body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, hora })
     });
-    return res.ok;
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data[0]?.id || null;
+}
+
+async function subirFotoRegistro(registroId, archivoBlob, usuarioId) {
+    const nombreArchivo = `${usuarioId}/${registroId}_${Date.now()}.jpg`;
+    const res = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/habit-photos/${nombreArchivo}`,
+        {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'image/jpeg',
+            },
+            body: archivoBlob
+        }
+    );
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/habit-photos/${nombreArchivo}`;
+}
+
+async function guardarFotoEnRegistro(registroId, fotoUrl) {
+    await fetch(
+        `${SUPABASE_URL}/rest/v1/registros?id=eq.${registroId}`,
+        {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ foto_url: fotoUrl })
+        }
+    );
 }
 
 async function desmarcarHabitoSupabase(habitoId, fecha) {

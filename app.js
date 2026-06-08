@@ -194,6 +194,100 @@ function inicializarFeedbackGlobal() {
 }
 
 // ============================================================
+// FOTOS DE HÁBITOS
+// ============================================================
+let registroFotoActual = null;
+let fotoBlob = null;
+
+function abrirSheetFoto(registroId) {
+    registroFotoActual = registroId;
+    fotoBlob = null;
+    document.getElementById('sheet-foto-preview').classList.add('hidden');
+    document.getElementById('btn-guardar-foto').classList.add('hidden');
+    document.getElementById('sheet-foto').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('sheet-foto-inner').style.transform = 'translateY(0)';
+    }, 10);
+}
+
+function cerrarSheetFoto() {
+    document.getElementById('sheet-foto-inner').style.transform = 'translateY(100%)';
+    setTimeout(() => {
+        document.getElementById('sheet-foto').classList.add('hidden');
+        registroFotoActual = null;
+        fotoBlob = null;
+    }, 300);
+}
+
+function verFotoCompleta(url) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;padding:24px;';
+    overlay.innerHTML = `<img src="${url}" style="max-width:100%;max-height:90vh;border-radius:16px;object-fit:contain;">`;
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
+
+function seleccionarFoto(fuente) {
+    const input = document.getElementById('input-foto');
+    input.capture = fuente === 'camara' ? 'environment' : '';
+    input.click();
+}
+
+function onFotoSeleccionada(input) {
+    const archivo = input.files[0];
+    if (!archivo) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        // Comprimir con Canvas a max 800px y calidad 0.75
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxSize = 800;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+                if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                else { w = Math.round(w * maxSize / h); h = maxSize; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob(blob => {
+                fotoBlob = blob;
+                // Mostrar preview
+                document.getElementById('sheet-foto-img').src = e.target.result;
+                document.getElementById('sheet-foto-preview').classList.remove('hidden');
+                document.getElementById('btn-guardar-foto').classList.remove('hidden');
+            }, 'image/jpeg', 0.75);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(archivo);
+    input.value = '';
+}
+
+async function guardarFotoSheet() {
+    if (!fotoBlob || !registroFotoActual || !usuarioActual) return;
+    const btn = document.getElementById('btn-guardar-foto');
+    btn.textContent = 'Subiendo...';
+    btn.disabled = true;
+
+    const url = await subirFotoRegistro(registroFotoActual, fotoBlob, usuarioActual.id);
+    if (url) {
+        await guardarFotoEnRegistro(registroFotoActual, url);
+        // Actualizar en memoria — buscar el hábito que tiene este registro
+        for (const h of misHabitos) {
+            if (h._registroIdMap && h._registroIdMap[registroFotoActual]) {
+                const fecha = h._registroIdMap[registroFotoActual];
+                h.fotos = h.fotos || {};
+                h.fotos[fecha] = url;
+                break;
+            }
+        }
+    }
+    cerrarSheetFoto();
+}
+
+// ============================================================
 // ANIMACIONES DE PANTALLA
 // ============================================================
 function abrirPantallaAnimada(id) {
@@ -510,6 +604,11 @@ async function cargarDatosUsuario() {
                 registrosDB
                     .filter(r => r.habito_id === h.id && r.hora)
                     .map(r => [r.fecha, r.hora])
+            ),
+            fotos: Object.fromEntries(
+                registrosDB
+                    .filter(r => r.habito_id === h.id && r.foto_url)
+                    .map(r => [r.fecha, r.foto_url])
             ),
             diasSemana: h.dias_semana
                 ? h.dias_semana.split(',').map(Number)
@@ -978,10 +1077,15 @@ async function toggleHabitoDia(habitoId, fechaStr) {
         habito.registros = habito.registros.filter(f => f !== fechaStr);
         sonarUncheck();
     } else {
-        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
+        const registroId = await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
+        if (registroId) {
+            habito._registroIdMap = habito._registroIdMap || {};
+            habito._registroIdMap[registroId] = fechaStr;
+        }
         if (navigator.vibrate) navigator.vibrate(30);
         sonarCheck();
+        if (registroId) setTimeout(() => abrirSheetFoto(registroId), 400);
     }
 
     animarCargaInicial = false;
@@ -1290,22 +1394,42 @@ function irAPantalla(pantalla) {
     calendario.classList.add('hidden');
     estadisticas.classList.add('hidden');
 
+    // Columnas derechas desktop
+    const cdInicio = document.getElementById('col-derecha-inicio');
+    const cdCalendario = document.getElementById('col-derecha-calendario');
+    const cdEstadisticas = document.getElementById('col-derecha-estadisticas');
+    if (cdInicio) cdInicio.classList.add('hidden');
+    if (cdCalendario) cdCalendario.classList.add('hidden');
+    if (cdEstadisticas) cdEstadisticas.classList.add('hidden');
+
+    // Sidebar activo
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('activo'));
+
     if (pantalla === 'inicio') {
         inicio.classList.remove('hidden');
+        if (cdInicio) cdInicio.classList.remove('hidden');
         resumen.classList.remove('hidden');
         if (tira) tira.classList.remove('hidden');
+        const sb = document.getElementById('sidebar-btn-inicio');
+        if (sb) sb.classList.add('activo');
     } else if (pantalla === 'calendario') {
         calendario.classList.remove('hidden');
+        if (cdCalendario) cdCalendario.classList.remove('hidden');
         resumen.classList.add('hidden');
         if (tira) tira.classList.add('hidden');
         generarCalendarioMensual();
         offsetSemanaResumen = 0;
         generarResumenSemanal();
+        const sb = document.getElementById('sidebar-btn-calendario');
+        if (sb) sb.classList.add('activo');
     } else if (pantalla === 'estadisticas') {
         estadisticas.classList.remove('hidden');
+        if (cdEstadisticas) cdEstadisticas.classList.remove('hidden');
         resumen.classList.add('hidden');
         if (tira) tira.classList.remove('hidden');
         generarEstadisticas();
+        const sb = document.getElementById('sidebar-btn-estadisticas');
+        if (sb) sb.classList.add('activo');
     }
 }
 
@@ -1792,10 +1916,15 @@ async function toggleHabitoHoy(id) {
         habito.registros = habito.registros.filter(f => f !== fechaRef);
         sonarUncheck();
     } else {
-        await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
+        const registroId = await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
         habito.registros.push(fechaRef);
+        if (registroId) {
+            habito._registroIdMap = habito._registroIdMap || {};
+            habito._registroIdMap[registroId] = fechaRef;
+        }
         if (navigator.vibrate) navigator.vibrate(50);
         sonarCheck();
+        if (registroId) setTimeout(() => abrirSheetFoto(registroId), 400);
     }
 
     animarCargaInicial = false;
@@ -2758,24 +2887,29 @@ function generarUltimosRegistros(habito) {
     contenedor.innerHTML = '';
     const color = habito.color || '#6C63FF';
     const registros = [...habito.registros].sort().reverse().slice(0, 10);
-
     if (registros.length === 0) {
         contenedor.innerHTML = `<p class="text-xs text-slate-400 font-medium">Aún no hay registros.</p>`;
         return;
     }
-
     const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-
+    const esDark = document.documentElement.classList.contains('dark');
     registros.forEach(fecha => {
         const d = new Date(fecha + 'T00:00:00');
         const esHoy = fecha === hoyComoTexto();
         const etiqueta = esHoy ? 'Hoy' : `${diasSemana[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
-        const esDark = document.documentElement.classList.contains('dark');
+        const fotoUrl = habito.fotos?.[fecha];
+        const fotoHtml = fotoUrl ? `
+            <img src="${fotoUrl}" 
+                 class="w-10 h-10 rounded-xl object-cover flex-shrink-0 cursor-pointer active:scale-95 transition-all"
+                 onclick="verFotoCompleta('${fotoUrl}')"
+                 style="border: 2px solid ${color}30;">
+        ` : '';
         contenedor.innerHTML += `
-            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${document.documentElement.classList.contains('dark') ? '#1a1a1a' : color+'10'}; border:1px solid ${document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.10)' : color+'20'};">
+            <div class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background:${esDark ? '#1a1a1a' : color+'10'}; border:1px solid ${esDark ? 'rgba(255,255,255,0.10)' : color+'20'};">
                 <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></div>
                 <p class="text-sm font-bold text-black dark:text-white flex-1">${etiqueta}</p>
+                ${fotoHtml}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
         `;
