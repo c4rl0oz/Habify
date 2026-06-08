@@ -18,60 +18,155 @@ function getAudioCtx() {
     return audioCtx;
 }
 
-function sonarTap() {
+function crearReverb(ctx, duracion = 0.3, decay = 2.0) {
+    const convolver = ctx.createConvolver();
+    const largo = Math.floor(ctx.sampleRate * duracion);
+    const buffer = ctx.createBuffer(2, largo, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+        const data = buffer.getChannelData(ch);
+        for (let i = 0; i < largo; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / largo, decay);
+        }
+    }
+    convolver.buffer = buffer;
+    return convolver;
+}
+
+function nota(ctx, dest, freq, delay, duracion, volumen, tipo = 'sine') {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = tipo;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+    g.gain.setValueAtTime(volumen, ctx.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duracion);
+    osc.connect(g); g.connect(dest);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + duracion);
+}
+
+// 1. ABRIR CREAR HÁBITO — curiosidad, invitación
+// Dos notas ascendentes con bounce, ligeras y abiertas
+function sonarAbrirCrear() {
     try {
         const ctx = getAudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.06);
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.06);
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.65, ctx.currentTime);
+        master.connect(ctx.destination);
+        nota(ctx, master, 440, 0,    0.12, 0.8);   // La
+        nota(ctx, master, 554, 0.1,  0.18, 0.7);   // Do#  — tercera mayor, suena abierto
+        nota(ctx, master, 880, 0.12, 0.10, 0.15);  // La octava — brillo
     } catch(e) {}
 }
 
+// 2. CREAR HÁBITO — satisfacción, pequeño logro completado
+// Tres notas que forman una cadencia, con reverb corto
+function sonarCrearHabito() {
+    try {
+        const ctx = getAudioCtx();
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.70, ctx.currentTime);
+        const reverb = crearReverb(ctx, 0.3, 2.5);
+        const rvGain = ctx.createGain();
+        rvGain.gain.setValueAtTime(0.20, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(ctx.destination);
+        master.connect(ctx.destination);
+        // Mi - Sol# - Si — acorde de Mi mayor, cálido y resuelto
+        nota(ctx, master, 330, 0,    0.22, 0.9);
+        nota(ctx, master, 415, 0.09, 0.20, 0.8);
+        nota(ctx, master, 494, 0.18, 0.28, 1.0);
+        // Con reverb
+        nota(ctx, reverb, 330, 0,    0.22, 0.6);
+        nota(ctx, reverb, 415, 0.09, 0.20, 0.5);
+        nota(ctx, reverb, 494, 0.18, 0.28, 0.7);
+    } catch(e) {}
+}
+
+// 3. MARCAR COMPLETADO — positivo, fresco, satisfactorio
+// Intervalo Do→Sol (quinta justa) — universalmente positivo
 function sonarCheck() {
     try {
         const ctx = getAudioCtx();
-        // Dos tonos rápidos ascendentes
-        [[520, 0], [680, 0.07]].forEach(([freq, delay]) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-            gain.gain.setValueAtTime(0.10, ctx.currentTime + delay);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.1);
-            osc.start(ctx.currentTime + delay);
-            osc.stop(ctx.currentTime + delay + 0.1);
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.72, ctx.currentTime);
+        const reverb = crearReverb(ctx, 0.25, 3.0);
+        const rvGain = ctx.createGain();
+        rvGain.gain.setValueAtTime(0.15, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(ctx.destination);
+        master.connect(ctx.destination);
+        nota(ctx, master, 523, 0,    0.14, 0.9);   // Do
+        nota(ctx, master, 784, 0.1,  0.22, 1.0);   // Sol — quinta justa
+        nota(ctx, master, 1047,0.12, 0.12, 0.2);   // Do octava alta — brillo
+        nota(ctx, reverb,  523, 0,   0.14, 0.6);
+        nota(ctx, reverb,  784, 0.1, 0.22, 0.7);
+    } catch(e) {}
+}
+
+// 4. DESMARCAR — neutral, suave, sin drama
+// Una sola nota descendente con glide suave
+function sonarUncheck() {
+    try {
+        const ctx = getAudioCtx();
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.45, ctx.currentTime);
+        master.connect(ctx.destination);
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(340, ctx.currentTime + 0.18);
+        g.gain.setValueAtTime(0.9, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.connect(g); g.connect(master);
+        osc.start(); osc.stop(ctx.currentTime + 0.18);
+    } catch(e) {}
+}
+
+// 5. META CONTADOR COMPLETADA — energía, más potente que el check
+// Cuatro notas rápidas ascendentes — tipo "power up"
+function sonarMetaContador() {
+    try {
+        const ctx = getAudioCtx();
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.75, ctx.currentTime);
+        const reverb = crearReverb(ctx, 0.35, 2.0);
+        const rvGain = ctx.createGain();
+        rvGain.gain.setValueAtTime(0.22, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(ctx.destination);
+        master.connect(ctx.destination);
+        // Do - Mi - Sol - Do (arpegio mayor rápido)
+        [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
+            nota(ctx, master, f, d, 0.20, 0.9);
+            nota(ctx, reverb,  f, d, 0.20, 0.5);
         });
     } catch(e) {}
 }
 
-function sonarComplete() {
+// 6. DÍA PERFECTO — euforia, el más grande
+// Fanfarria: arpegio mayor + acorde final sostenido con reverb largo
+function sonarDiaPerfecto() {
     try {
         const ctx = getAudioCtx();
-        // Acorde ascendente de 3 notas
-        [[520, 0], [660, 0.08], [800, 0.16]].forEach(([freq, delay]) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-            gain.gain.setValueAtTime(0.12, ctx.currentTime + delay);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
-            osc.start(ctx.currentTime + delay);
-            osc.stop(ctx.currentTime + delay + 0.18);
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.80, ctx.currentTime);
+        const reverb = crearReverb(ctx, 0.8, 1.5);
+        const rvGain = ctx.createGain();
+        rvGain.gain.setValueAtTime(0.30, ctx.currentTime);
+        reverb.connect(rvGain); rvGain.connect(ctx.destination);
+        master.connect(ctx.destination);
+        // Arpegio ascendente rápido
+        [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
+            nota(ctx, master, f, d, 0.18, 0.8);
+            nota(ctx, reverb,  f, d, 0.18, 0.5);
+        });
+        // Acorde final simultáneo con más cuerpo
+        [[523,0.38],[659,0.38],[784,0.38],[1047,0.38]].forEach(([f,d]) => {
+            nota(ctx, master, f, d, 0.60, 0.6);
+            nota(ctx, reverb,  f, d, 0.60, 0.4);
         });
     } catch(e) {}
 }
 
 function aplicarFeedbackVisual(el) {
-    // Detectar si es botón pill grande o botón icono/pequeño
     const esPill = el.classList.contains('w-full') || el.classList.contains('btn-pill');
     const clase = esPill ? 'btn-press-pill' : 'btn-press';
     el.classList.add(clase);
@@ -79,13 +174,11 @@ function aplicarFeedbackVisual(el) {
 }
 
 function inicializarFeedbackGlobal() {
+    // Solo feedback visual — sin sonido genérico
     document.addEventListener('touchstart', e => {
         const btn = e.target.closest('button, [role="button"]');
-        if (!btn) return;
+        if (!btn || btn.disabled) return;
         aplicarFeedbackVisual(btn);
-        // Sonido tap para botones genéricos (excluir los que tienen su propio sonido)
-        const tienesonarPropio = btn.hasAttribute('data-sound');
-        if (!tienesonarPropio) sonarTap();
     }, { passive: true });
 }
 
@@ -814,7 +907,7 @@ async function ajustarContador(habitoId, fechaStr, delta) {
             { method: 'PATCH', headers, body: JSON.stringify({ cantidad: nuevaCantidad }) }
         );
         if (navigator.vibrate) navigator.vibrate(30);
-        sonarComplete();
+        sonarMetaContador();
         verificarNuevosLogros();
 
     } else if (nuevaCantidad < metaCantidad && yaCompletado) {
@@ -872,6 +965,7 @@ async function toggleHabitoDia(habitoId, fechaStr) {
     if (completado) {
         await desmarcarHabitoSupabase(habitoId, fechaStr);
         habito.registros = habito.registros.filter(f => f !== fechaStr);
+        sonarUncheck();
     } else {
         await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
@@ -907,6 +1001,7 @@ async function eliminarHabito(id) {
 // MODAL DE CREAR HÁBITO
 // ============================================================
 function abrirModal() {
+    sonarAbrirCrear();
     const pantalla = document.getElementById('pantalla-crear-habito');
     abrirPantallaAnimada('pantalla-crear-habito');
     // Reset estado
@@ -1684,6 +1779,7 @@ async function toggleHabitoHoy(id) {
     if (habito.registros.includes(fechaRef)) {
         await desmarcarHabitoSupabase(id, fechaRef);
         habito.registros = habito.registros.filter(f => f !== fechaRef);
+        sonarUncheck();
     } else {
         await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
         habito.registros.push(fechaRef);
@@ -2220,6 +2316,7 @@ async function crearHabitoNuevo() {
     };
 
     misHabitos.push(nuevoHabito);
+    sonarCrearHabito();
     renderizarHabitos();
     actualizarResumenHoy();
     cerrarModal();
@@ -2934,7 +3031,7 @@ function verificarDiaPerfecto() {
     const rachaMax = misHabitos.reduce((max, h) => Math.max(max, calcularRacha(h)), 0);
     document.getElementById('dia-perfecto-racha').innerText = rachaMax > 0 ? `🔥 ${rachaMax}` : '—';
 
-    sonarComplete();
+    sonarDiaPerfecto();
 
     // Lanzar confetti
     const contenedor = document.getElementById('dia-perfecto-confetti');
