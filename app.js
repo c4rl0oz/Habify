@@ -459,6 +459,8 @@ function cerrarSesion() {
         localStorage.removeItem('habify_usuario_id');
         usuarioActual = null;
         misHabitos = [];
+        fechaActualCalendario = new Date();
+        notasCacheadas = {};
         document.getElementById('pantalla-perfil').classList.add('hidden');
         document.getElementById('pantalla-auth').classList.remove('hidden');
         document.getElementById('login-correo').value = '';
@@ -506,27 +508,6 @@ function inicializarApp() {
     inicializarModoOscuro();
     inicializarScrollResumen();
     verificarSesion();
-}
-
-// ============================================================
-// SALUDO DINÁMICO POR HORA
-// ============================================================
-function actualizarSaludo() {
-    const usuario = JSON.parse(localStorage.getItem('habify_usuario'));
-    if (usuario) {
-        actualizarUIUsuario(usuario);
-        return;
-    }
-    const horaActual = new Date().getHours();
-    const saludoElemento = document.getElementById('greeting-title');
-    if (!saludoElemento) return;
-    if (horaActual >= 6 && horaActual < 12) {
-        saludoElemento.innerText = "Buenos Días! ";
-    } else if (horaActual >= 12 && horaActual < 19) {
-        saludoElemento.innerText = "Buenas Tardes! ";
-    } else {
-        saludoElemento.innerText = "Buenas Noches! ";
-    }
 }
 
 // ============================================================
@@ -1248,7 +1229,7 @@ function generarGraficaSemanal(fechaRef) {
                         font: { family: 'sans-serif', size: 11, weight: 'bold' },
                         color: '#94a3b8'
                     },
-                    grid: { color: '#f1f5f9' }
+                    grid: { color: document.documentElement.classList.contains('dark') ? '#1a1a1a' : '#f1f5f9' }
                 },
                 x: {
                     ticks: {
@@ -1331,7 +1312,7 @@ function generarGraficaMensual(fechaRef) {
                         font: { family: 'sans-serif', size: 11, weight: 'bold' },
                         color: '#94a3b8'
                     },
-                    grid: { color: '#f1f5f9' }
+                    grid: { color: document.documentElement.classList.contains('dark') ? '#1a1a1a' : '#f1f5f9' }
                 },
                 x: {
                     ticks: {
@@ -1373,8 +1354,7 @@ function generarListaRachas() {
                     <span class="text-xl">${habito.emoji}</span>
                     <div>
                         <p class="text-sm font-bold text-black dark:text-white">${habito.nombre}</p>
-                        <p class="text-xs text-slate-400 dark:text-white/40 font-medium">${completados}/${habito.metaSemanal} esta semana</p>   
-                        <p class="text-sm font-black text-black dark:text-white">
+                        <p class="text-xs text-slate-400 dark:text-white/40 font-medium">${completados}/${habito.metaSemanal} esta semana</p>
                     </div>
                 </div>
                 <div class="text-right">
@@ -1512,21 +1492,8 @@ async function guardarNotaDia() {
                 body: JSON.stringify({ nota: texto })
             }
         );
-    } else {
-        // No hay registros ese día, guardamos en el primer hábito disponible
-        if (misHabitos.length > 0) {
-            await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    habito_id: misHabitos[0].id,
-                    usuario_id: usuarioActual.id,
-                    fecha: fechaActual,
-                    nota: texto
-                })
-            });
-        }
     }
+    // Si no hay registros ese día, no se crea registro fantasma — la nota simplemente no se guarda
 
     // Actualizar caché local
     if (texto) {
@@ -1624,28 +1591,6 @@ function seleccionarDiaTira(fechaStr) {
     }
 }
 
-async function toggleHabitoDia(habitoId, fechaStr) {
-    const habito = misHabitos.find(h => h.id === habitoId);
-    if (!habito || !usuarioActual) return;
-
-    const completado = habito.registros.includes(fechaStr);
-
-    if (completado) {
-        await desmarcarHabitoSupabase(habitoId, fechaStr);
-        habito.registros = habito.registros.filter(f => f !== fechaStr);
-    } else {
-        await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
-        habito.registros.push(fechaStr);
-        if (navigator.vibrate) navigator.vibrate(30);
-    }
-
-    animarCargaInicial = false;
-    renderizarHabitos();
-    actualizarResumenHoy();
-    inicializarTiraDias();
-    mostrarResumenDiaTira(fechaStr);
-}
-
 async function toggleHabitoHoy(id) {
     const habito = misHabitos.find(h => h.id === id);
     if (!habito || !usuarioActual) return;
@@ -1681,7 +1626,12 @@ function mostrarResumenDiaTira(fechaStr) {
     const completados = misHabitos.filter(h =>
         h.registros && h.registros.includes(fechaStr)
     );
-    const total = misHabitos.filter(h => h.fechaCreacion <= fechaStr).length;
+    const diaStr = new Date(fechaStr + 'T00:00:00').getDay();
+    const total = misHabitos.filter(h => {
+        if (h.fechaCreacion > fechaStr) return false;
+        if (!h.diasSemana || h.diasSemana.length === 0) return true;
+        return h.diasSemana.includes(diaStr);
+    }).length;
 
     // Actualizamos el resumen de hoy
     const textoResumen = document.getElementById('texto-resumen-hoy');
@@ -1746,7 +1696,6 @@ function toggleRecordatorio() {
         solicitarPermisoNotificaciones();
     } else {
         btn.style.background = '';
-        btn.classList.add('bg-slate-200', 'dark:bg-white/10');
         circulo.style.transform = 'translateX(0)';
         container.classList.add('hidden');
     }
@@ -2251,8 +2200,6 @@ function abrirDetalleHabito(id) {
     generarPatronDias(habito);
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
-
-    abrirPantallaAnimada('pantalla-detalle-habito');
 
     // Mostrar contador en detalle si aplica
     const contadorDetalle = document.getElementById('detalle-contador');
@@ -2886,7 +2833,12 @@ function verificarDiaPerfecto() {
     const yaVisto = localStorage.getItem('habify_dia_perfecto') === hoy;
     if (yaVisto) return;
 
-    const habitosHoy = misHabitos.filter(h => h.fechaCreacion <= hoy);
+    const diaSemanaHoy = new Date().getDay();
+    const habitosHoy = misHabitos.filter(h => {
+        if (h.fechaCreacion > hoy) return false;
+        if (!h.diasSemana || h.diasSemana.length === 0) return true;
+        return h.diasSemana.includes(diaSemanaHoy);
+    });
     if (habitosHoy.length === 0) return;
 
     const todosCompletos = habitosHoy.every(h => h.registros.includes(hoy));
@@ -2900,6 +2852,24 @@ function verificarDiaPerfecto() {
     // Lanzar confetti
     const contenedor = document.getElementById('dia-perfecto-confetti');
     contenedor.innerHTML = '';
+
+    // Inyectar estilos de confetti solo una vez
+    if (!document.getElementById('dp-confetti-styles')) {
+        const colors = ['#6C63FF','#a78bfa','#ffffff','#c4b5fd','#818cf8'];
+        let keyframes = '';
+        for (let i = 0; i < 38; i++) {
+            keyframes += `@keyframes dpConfetti${i} {
+                0%   { transform:translateY(0) rotate(0deg);   opacity:1; }
+                80%  { opacity:0.6; }
+                100% { transform:translateY(560px) rotate(${Math.floor(Math.random()*360)}deg); opacity:0; }
+            }`;
+        }
+        const styleEl = document.createElement('style');
+        styleEl.id = 'dp-confetti-styles';
+        styleEl.textContent = keyframes;
+        document.head.appendChild(styleEl);
+    }
+
     const colors = ['#6C63FF','#a78bfa','#ffffff','#c4b5fd','#818cf8'];
     for (let i = 0; i < 38; i++) {
         const el = document.createElement('div');
@@ -2915,14 +2885,6 @@ function verificarDiaPerfecto() {
             animation:dpConfetti${i} ${duration}s ${delay}s ease-in infinite;
         `;
         contenedor.appendChild(el);
-
-        const style = document.createElement('style');
-        style.textContent = `@keyframes dpConfetti${i} {
-            0%   { transform:translateY(0) rotate(0deg);   opacity:1; }
-            80%  { opacity:0.6; }
-            100% { transform:translateY(560px) rotate(${Math.random()*360}deg); opacity:0; }
-        }`;
-        document.head.appendChild(style);
     }
 
     // Adaptar colores al modo actual
