@@ -1059,13 +1059,18 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
 }
 
 const MENSAJES_DIA_COMPLETO = [
-    '¡Todo listo por hoy! Mereces un descanso 🎉',
-    '¡Día perfecto! Tú puedes con todo 💪',
-    '¡Lo lograste! Hoy fue un gran día 🌟',
-    '¡Imparable! Todos los hábitos completados 🔥',
-    '¡Eres una máquina! Día completado 🚀',
-    '¡Increíble disciplina! Sigue así 🏆',
-    '¡Hoy ganaste! Todos tus hábitos hechos ✨',
+    '¡Todo listo por hoy! 🎉',
+    '¡Día perfecto! 💪',
+    '¡Lo lograste hoy! 🌟',
+    '¡Imparable! 🔥',
+    '¡Día completado! 🚀',
+    '¡Increíble disciplina! 🏆',
+    '¡Hoy ganaste! ✨', 
+    '¡Día redondo! 🎯',
+    '¡Eres una máquina! 🤖',
+    '¡Día de éxito! 🥳',
+    '¡Fantástico trabajo! 🎊',
+    '¡Día conquistado! 🏅',
 ];
 
 function actualizarResumenHoy() {
