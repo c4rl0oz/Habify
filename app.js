@@ -30,19 +30,6 @@ function getAudioCtx() {
 
 function getDest() { getAudioCtx(); return audioCompressor; }
 
-function crearDistorsion(ctx, cantidad = 80) {
-    const shaper = ctx.createWaveShaper();
-    const samples = 256;
-    const curve = new Float32Array(samples);
-    for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = ((Math.PI + cantidad) * x) / (Math.PI + cantidad * Math.abs(x));
-    }
-    shaper.curve = curve;
-    shaper.oversample = '4x';
-    return shaper;
-}
-
 function crearReverb(ctx, duracion = 0.3, decay = 2.0) {
     const convolver = ctx.createConvolver();
     const largo = Math.floor(ctx.sampleRate * duracion);
@@ -74,11 +61,9 @@ function nota(ctx, dest, freq, delay, duracion, volumen, tipo = 'sine') {
 function sonarAbrirCrear() {
     try {
         const ctx = getAudioCtx();
-        const dist = crearDistorsion(ctx, 40);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.5, ctx.currentTime);
-        dist.connect(getDest());
-        master.connect(dist);
+        master.gain.setValueAtTime(1.3, ctx.currentTime);
+        master.connect(getDest());
         nota(ctx, master, 440, 0,    0.14, 1.0);
         nota(ctx, master, 554, 0.10, 0.20, 1.0);
         nota(ctx, master, 880, 0.12, 0.12, 0.4);
@@ -91,15 +76,13 @@ function sonarCrearHabito() {
     try {
         const ctx = getAudioCtx();
         const dest = getDest();
-        const dist = crearDistorsion(ctx, 50);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.5, ctx.currentTime);
+        master.gain.setValueAtTime(1.3, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.3, 2.5);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.5, ctx.currentTime);
-        dist.connect(dest);
+        rvGain.gain.setValueAtTime(0.4, ctx.currentTime);
         reverb.connect(rvGain); rvGain.connect(dest);
-        master.connect(dist);
+        master.connect(dest);
         nota(ctx, master, 330, 0,    0.22, 1.0);
         nota(ctx, master, 415, 0.09, 0.20, 1.0);
         nota(ctx, master, 494, 0.18, 0.30, 1.0);
@@ -115,15 +98,13 @@ function sonarCheck() {
     try {
         const ctx = getAudioCtx();
         const dest = getDest();
-        const dist = crearDistorsion(ctx, 50);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.5, ctx.currentTime);
+        master.gain.setValueAtTime(1.3, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.25, 3.0);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.5, ctx.currentTime);
-        dist.connect(dest);
+        rvGain.gain.setValueAtTime(0.4, ctx.currentTime);
         reverb.connect(rvGain); rvGain.connect(dest);
-        master.connect(dist);
+        master.connect(dest);
         nota(ctx, master, 523,  0,    0.14, 1.0);
         nota(ctx, master, 784,  0.10, 0.22, 1.0);
         nota(ctx, master, 1047, 0.12, 0.12, 0.4);
@@ -137,11 +118,9 @@ function sonarCheck() {
 function sonarUncheck() {
     try {
         const ctx = getAudioCtx();
-        const dist = crearDistorsion(ctx, 30);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.0, ctx.currentTime);
-        dist.connect(getDest());
-        master.connect(dist);
+        master.gain.setValueAtTime(1.1, ctx.currentTime);
+        master.connect(getDest());
         const osc = ctx.createOscillator();
         const g = ctx.createGain();
         osc.type = 'sine';
@@ -160,15 +139,13 @@ function sonarMetaContador() {
     try {
         const ctx = getAudioCtx();
         const dest = getDest();
-        const dist = crearDistorsion(ctx, 60);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.5, ctx.currentTime);
+        master.gain.setValueAtTime(1.3, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.35, 2.0);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.5, ctx.currentTime);
-        dist.connect(dest);
+        rvGain.gain.setValueAtTime(0.4, ctx.currentTime);
         reverb.connect(rvGain); rvGain.connect(dest);
-        master.connect(dist);
+        master.connect(dest);
         [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
             nota(ctx, master, f, d, 0.20, 1.0);
             nota(ctx, reverb,  f, d, 0.20, 0.7);
@@ -182,15 +159,13 @@ function sonarDiaPerfecto() {
     try {
         const ctx = getAudioCtx();
         const dest = getDest();
-        const dist = crearDistorsion(ctx, 60);
         const master = ctx.createGain();
-        master.gain.setValueAtTime(2.5, ctx.currentTime);
+        master.gain.setValueAtTime(1.3, ctx.currentTime);
         const reverb = crearReverb(ctx, 0.8, 1.5);
         const rvGain = ctx.createGain();
-        rvGain.gain.setValueAtTime(0.6, ctx.currentTime);
-        dist.connect(dest);
+        rvGain.gain.setValueAtTime(0.5, ctx.currentTime);
         reverb.connect(rvGain); rvGain.connect(dest);
-        master.connect(dist);
+        master.connect(dest);
         [[523,0],[659,0.07],[784,0.14],[1047,0.21]].forEach(([f,d]) => {
             nota(ctx, master, f, d, 0.18, 1.0);
             nota(ctx, reverb,  f, d, 0.18, 0.7);
