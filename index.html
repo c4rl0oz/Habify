@@ -81,6 +81,25 @@
     #slider-meta::-webkit-slider-thumb:active {
         transform: scale(1.15);
     }
+
+    /* FEEDBACK TÁCTIL VISUAL */
+    .btn-press {
+        transition: transform 0.12s cubic-bezier(0.32, 0.72, 0, 1),
+                    filter 0.12s ease !important;
+        transform: scale(0.91) !important;
+        filter: brightness(0.88) !important;
+    }
+    /* Botones pill grandes (crear, guardar, entrar) */
+    .btn-press-pill {
+        transition: transform 0.12s cubic-bezier(0.32, 0.72, 0, 1),
+                    filter 0.12s ease !important;
+        transform: scale(0.96) !important;
+        filter: brightness(0.92) !important;
+    }
+    /* Suprimir highlight nativo del navegador en toda la app */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
 </style>
 <head>
     <meta charset="UTF-8">

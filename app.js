@@ -9,6 +9,87 @@ let animarCargaInicial = true;
 let notasCacheadas = {};
 
 // ============================================================
+// FEEDBACK: SONIDO + VISUAL
+// ============================================================
+let audioCtx = null;
+
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function sonarTap() {
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.06);
+    } catch(e) {}
+}
+
+function sonarCheck() {
+    try {
+        const ctx = getAudioCtx();
+        // Dos tonos rápidos ascendentes
+        [[520, 0], [680, 0.07]].forEach(([freq, delay]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.10, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.1);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.1);
+        });
+    } catch(e) {}
+}
+
+function sonarComplete() {
+    try {
+        const ctx = getAudioCtx();
+        // Acorde ascendente de 3 notas
+        [[520, 0], [660, 0.08], [800, 0.16]].forEach(([freq, delay]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.12, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.18);
+        });
+    } catch(e) {}
+}
+
+function aplicarFeedbackVisual(el) {
+    // Detectar si es botón pill grande o botón icono/pequeño
+    const esPill = el.classList.contains('w-full') || el.classList.contains('btn-pill');
+    const clase = esPill ? 'btn-press-pill' : 'btn-press';
+    el.classList.add(clase);
+    setTimeout(() => el.classList.remove(clase), 150);
+}
+
+function inicializarFeedbackGlobal() {
+    document.addEventListener('touchstart', e => {
+        const btn = e.target.closest('button, [role="button"]');
+        if (!btn) return;
+        aplicarFeedbackVisual(btn);
+        // Sonido tap para botones genéricos (excluir los que tienen su propio sonido)
+        const tienesonarPropio = btn.hasAttribute('data-sound');
+        if (!tienesonarPropio) sonarTap();
+    }, { passive: true });
+}
+
+// ============================================================
 // ANIMACIONES DE PANTALLA
 // ============================================================
 function abrirPantallaAnimada(id) {
@@ -507,6 +588,7 @@ function mostrarError(mensaje) {
 function inicializarApp() {
     inicializarModoOscuro();
     inicializarScrollResumen();
+    inicializarFeedbackGlobal();
     verificarSesion();
 }
 
@@ -732,6 +814,7 @@ async function ajustarContador(habitoId, fechaStr, delta) {
             { method: 'PATCH', headers, body: JSON.stringify({ cantidad: nuevaCantidad }) }
         );
         if (navigator.vibrate) navigator.vibrate(30);
+        sonarComplete();
         verificarNuevosLogros();
 
     } else if (nuevaCantidad < metaCantidad && yaCompletado) {
@@ -793,6 +876,7 @@ async function toggleHabitoDia(habitoId, fechaStr) {
         await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
         if (navigator.vibrate) navigator.vibrate(30);
+        sonarCheck();
     }
 
     animarCargaInicial = false;
@@ -1604,6 +1688,7 @@ async function toggleHabitoHoy(id) {
         await marcarHabitoSupabase(id, usuarioActual.id, fechaRef);
         habito.registros.push(fechaRef);
         if (navigator.vibrate) navigator.vibrate(50);
+        sonarCheck();
     }
 
     animarCargaInicial = false;
@@ -2848,6 +2933,8 @@ function verificarDiaPerfecto() {
     document.getElementById('dia-perfecto-total').innerText = habitosHoy.length;
     const rachaMax = misHabitos.reduce((max, h) => Math.max(max, calcularRacha(h)), 0);
     document.getElementById('dia-perfecto-racha').innerText = rachaMax > 0 ? `🔥 ${rachaMax}` : '—';
+
+    sonarComplete();
 
     // Lanzar confetti
     const contenedor = document.getElementById('dia-perfecto-confetti');
