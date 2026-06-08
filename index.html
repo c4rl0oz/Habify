@@ -100,7 +100,6 @@
     * {
         -webkit-tap-highlight-color: transparent;
     }
-
 </style>
 <head>
     <meta charset="UTF-8">
@@ -118,55 +117,143 @@
     <script src="supabase.js"></script>
 </head>
 
-<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased h-screen overflow-hidden select-none">
+<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
 
-<!-- TOPBAR DESKTOP -->
-<div id="desktop-topbar">
-    <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:#6C63FF;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        </div>
-        <span class="text-base font-black text-black dark:text-white">Habify</span>
+<div id="pantalla-auth" class="fixed inset-0 bg-slate-50 dark:bg-[#000000] z-50 flex flex-col px-8 gap-6 pt-[20vh] pb-12">    <div class="space-y-1">
+        <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
+        <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
     </div>
-    <div class="flex items-center gap-3">
-        <span id="topbar-nombre" class="text-sm font-bold text-slate-400"></span>
-        <button onclick="toggleModoOscuro()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center transition-all hover:bg-slate-200 dark:hover:bg-white/20">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+
+    <!-- Tabs de Login / Registro -->
+    <div class="flex bg-slate-100 dark:bg-white/10 rounded-2xl p-1 card-shadow">
+        <button id="tab-login" onclick="cambiarTab('login')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                style="background:#6C63FF; color:white; box-shadow: 0 4px 12px rgba(108,99,255,0.35);">
+            Iniciar sesión
+        </button>
+        <button id="tab-registro" onclick="cambiarTab('registro')"
+                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                style="background:transparent; color:#94a3b8;">
+            Registrarse
+        </button>
+    </div>
+
+    <!-- Formulario Login -->
+    <div id="form-login" class="flex-1 flex flex-col gap-3">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="login-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="login-password" placeholder="Tu contraseña"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
+    </div>
+
+    <!-- Formulario Registro -->
+    <div id="form-registro" class="flex-1 flex-col hidden space-y-4">
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
+            <input type="text" id="registro-nombre" placeholder="ej. Ana, Carlos"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="registro-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
+            <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
+    </div>
+
+    <div class="absolute bottom-0 left-0 right-0 px-8 pb-12 flex flex-col gap-3">
+        <button id="btn-login" onclick="loginUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Entrar →
+        </button>
+        <button id="btn-registro" onclick="registrarUsuario()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Crear cuenta →
+        </button>
+        <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
+    </div>
+</div>
+
+<!-- PANTALLA DE PERFIL -->
+<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col hidden overflow-y-auto" style="transform: translateY(100%);">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
+        <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
+        <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+
+    <!-- Avatar -->
+    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mx-6 mb-6" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
+        <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">
+            <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+        </div>
+        <div class="text-center">
+            <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
+            <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="px-6 space-y-3">
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
+            <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
+            <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Racha máxima</span>
+            <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Tu mejor momento</span>
+            <span id="perfil-hora-pico" class="text-sm font-black text-black dark:text-white">—</span>
+        </div>
+        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
+            <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
+            <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
+                class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
+                <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
+            </button>
+        </div>
+        <button onclick="abrirLogros()" class="w-full bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10 card-shadow active:scale-[0.98] transition-all">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">🏆</span>
+                <div class="text-left">
+                    <p class="text-sm font-bold text-black dark:text-white">Mis logros</p>
+                    <p id="perfil-logros-count" class="text-xs text-slate-400 font-medium">Cargando...</p>
+                </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+    </div>
+
+    <!-- Cerrar sesión -->
+    <div class="px-6 pt-6 pb-10 mt-2">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
+            Cerrar sesión
         </button>
     </div>
 </div>
-
-<!-- SIDEBAR DESKTOP -->
-<div id="desktop-sidebar">
-    <div class="px-2 mb-4">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menú</p>
-    </div>
-    <button onclick="irAPantalla('inicio')" id="sidebar-btn-inicio" class="sidebar-btn activo">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Inicio
-    </button>
-    <button onclick="irAPantalla('calendario')" id="sidebar-btn-calendario" class="sidebar-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Calendario
-    </button>
-    <button onclick="irAPantalla('estadisticas')" id="sidebar-btn-estadisticas" class="sidebar-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        Estadísticas
-    </button>
-    <button onclick="abrirPerfil()" class="sidebar-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Perfil
-    </button>
-    <div class="flex-1"></div>
-    <button onclick="abrirModal()" class="sidebar-btn sidebar-btn-crear">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Nuevo hábito
-    </button>
-</div>
-
-<!-- CONTENIDO DESKTOP -->
-<div id="desktop-content">
-
 <header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
 <div class="flex justify-between items-start mb-4">
         <div>
@@ -181,12 +268,10 @@
 </header>
 
     <main class="flex-1 overflow-y-auto px-6 pb-28 space-y-4">
-
-        <!-- COLUMNA IZQUIERDA DESKTOP -->
-        <div id="col-izquierda">
         
         <section id="pantalla-inicio" class="space-y-4">
             <div id="contenedor-widgets" class="grid grid-cols-2 gap-4"></div>
+
         </section>
 
         <section id="pantalla-calendario" class="hidden space-y-5">
@@ -268,98 +353,80 @@
 
         </section>
 
-        <!-- PANTALLA DE ESTADÍSTICAS — columna izquierda -->
-        <section id="pantalla-estadisticas" class="hidden space-y-5">
+        <!-- PANTALLA DE ESTADÍSTICAS -->
+<section id="pantalla-estadisticas" class="hidden space-y-5">
+    
+    <div class="flex justify-between items-center py-2">
+        <h2 class="text-2xl font-black text-black dark:text-white">Estadísticas</h2>
+        <span id="stats-fecha" class="text-xs font-bold text-slate-400"></span>
+    </div>
 
-            <div class="flex justify-between items-center py-2">
-                <h2 class="text-2xl font-black text-black dark:text-white">Estadísticas</h2>
-                <span id="stats-fecha" class="text-xs font-bold text-slate-400"></span>
-            </div>
-
-            <!-- Gráfica semanal -->
-            <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
-                <canvas id="grafica-semanal" height="160"></canvas>
-            </div>
-
-            <!-- Gráfica mensual -->
-            <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
-                <canvas id="grafica-mensual" height="160"></canvas>
-            </div>
-
-        </section>
-
-        </div><!-- /col-izquierda -->
-
-        <!-- COLUMNA DERECHA DESKTOP -->
-        <div id="col-derecha">
-
-        <!-- Derecha: Inicio — widgets -->
-        <div id="col-derecha-inicio" class="space-y-4"></div>
-
-        <!-- Derecha: Calendario — resumen semanal -->
-        <div id="col-derecha-calendario" class="hidden space-y-5">
-            <div id="resumen-semanal-card-desktop"></div>
+    <!-- Tarjeta de productividad global -->
+            <div class="p-5 rounded-[28px] flex justify-between items-center hero-shadow" style="background:#6C63FF;">        <div>
+            <p id="stats-label-prod" class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
+            <p id="stats-porcentaje" class="text-4xl font-black text-white">0%</p>
+            <p id="stats-descripcion" class="text-xs text-white/60 mt-1">hábitos completados</p>
         </div>
+        <div class="relative w-16 h-16 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-white/20" stroke-width="3" stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path id="stats-anillo" class="text-white transition-all duration-700" 
+                      stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" 
+                      stroke="currentColor" fill="none" 
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+        </div>
+    </div>
 
-        <!-- Derecha: Estadísticas — anillo + comparativa + rachas -->
-        <div id="col-derecha-estadisticas" class="hidden space-y-5">
+    <!-- Gráfica semanal con Chart.js -->
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Esta semana</p>
+        <canvas id="grafica-semanal" height="160"></canvas>
+    </div>
 
-            <!-- Tarjeta productividad -->
-            <div class="p-5 rounded-[28px] flex justify-between items-center hero-shadow" style="background:#6C63FF;">
-                <div>
-                    <p id="stats-label-prod" class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
-                    <p id="stats-porcentaje" class="text-4xl font-black text-white">0%</p>
-                    <p id="stats-descripcion" class="text-xs text-white/60 mt-1">hábitos completados</p>
-                </div>
-                <div class="relative w-16 h-16 flex items-center justify-center">
-                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path class="text-white/20" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                        <path id="stats-anillo" class="text-white transition-all duration-700" stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                    </svg>
-                </div>
+    <div class="bg-slate-100/70 dark:bg-[#1a1a1a] p-5 rounded-[28px] space-y-3 border border-transparent dark:border-white/10 card-shadow">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Últimos 30 días</p>
+        <canvas id="grafica-mensual" height="160"></canvas>
+    </div>
+
+    <!-- Comparativa semanal -->
+    <div id="comparativa-semanal-card" class="bg-slate-100/70 dark:bg-[#1a1a1a] rounded-[24px] border border-transparent dark:border-white/10 overflow-hidden card-shadow">
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-white/10">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Esta semana vs anterior</p>
+            <p id="comparativa-rango" class="text-sm font-black text-black dark:text-white mt-0.5"></p>
+        </div>
+        <div class="grid grid-cols-2 border-b border-slate-200/60 dark:border-white/10">
+            <div class="px-5 py-4">
+                <p class="text-[11px] font-bold text-slate-400 mb-1">Esta semana</p>
+                <p id="comparativa-actual" class="text-3xl font-black" style="color:#6C63FF">0</p>
+                <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
             </div>
-
-            <!-- Comparativa semanal -->
-            <div id="comparativa-semanal-card" class="bg-slate-100/70 dark:bg-[#1a1a1a] rounded-[24px] border border-transparent dark:border-white/10 overflow-hidden card-shadow">
-                <div class="px-5 py-4 border-b border-slate-100 dark:border-white/10">
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Esta semana vs anterior</p>
-                    <p id="comparativa-rango" class="text-sm font-black text-black dark:text-white mt-0.5"></p>
-                </div>
-                <div class="grid grid-cols-2 border-b border-slate-200/60 dark:border-white/10">
-                    <div class="px-5 py-4">
-                        <p class="text-[11px] font-bold text-slate-400 mb-1">Esta semana</p>
-                        <p id="comparativa-actual" class="text-3xl font-black" style="color:#6C63FF">0</p>
-                        <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
-                    </div>
-                    <div class="px-5 py-4">
-                        <p class="text-[11px] font-bold text-slate-400 mb-1">Semana anterior</p>
-                        <p id="comparativa-anterior" class="text-3xl font-black text-slate-400">0</p>
-                        <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
-                    </div>
-                </div>
-                <div class="px-5 py-4 flex items-center gap-3">
-                    <div id="comparativa-icono" class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"></div>
-                    <div>
-                        <p id="comparativa-diff" class="text-lg font-black"></p>
-                        <p id="comparativa-pct" class="text-[11px] font-bold text-slate-400 mt-0.5"></p>
-                    </div>
-                </div>
-                <div id="comparativa-mensaje" class="mx-5 mb-4 px-4 py-2.5 rounded-xl">
-                    <p id="comparativa-mensaje-texto" class="text-xs font-bold leading-relaxed"></p>
-                </div>
+            <div class="px-5 py-4">
+                <p class="text-[11px] font-bold text-slate-400 mb-1">Semana anterior</p>
+                <p id="comparativa-anterior" class="text-3xl font-black text-slate-400">0</p>
+                <p class="text-[11px] text-slate-400 mt-1">hábitos completados</p>
             </div>
-
-            <!-- Rachas activas -->
-            <div class="space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Rachas activas</p>
-                <div id="lista-rachas" class="space-y-2"></div>
+        </div>
+        <div class="px-5 py-4 flex items-center gap-3">
+            <div id="comparativa-icono" class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"></div>
+            <div>
+                <p id="comparativa-diff" class="text-lg font-black"></p>
+                <p id="comparativa-pct" class="text-[11px] font-bold text-slate-400 mt-0.5"></p>
             </div>
+        </div>
+        <div id="comparativa-mensaje" class="mx-5 mb-4 px-4 py-2.5 rounded-xl">
+            <p id="comparativa-mensaje-texto" class="text-xs font-bold leading-relaxed"></p>
+        </div>
+    </div>
 
-        </div><!-- /col-derecha-estadisticas -->
+    <!-- Rachas por hábito -->
+    <div class="space-y-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Rachas activas</p>
+        <div id="lista-rachas" class="space-y-2"></div>
+    </div>
 
-        </div><!-- /col-derecha -->
+</section>
 
     </main>
 <div id="resumen-hoy" class="absolute bottom-24 left-6 right-6 z-10 bg-slate-100/95 dark:bg-[#0f0f0f] backdrop-blur-sm px-5 py-3 rounded-2xl border border-slate-200/60 dark:border-white/10 flex justify-between items-center float-shadow" style="min-height:44px;">        
@@ -369,7 +436,7 @@
 
 <!-- Barra de navegación inferior -->
 
-<div id="nav-bottom-mobile" class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
+<div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
     <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10 nav-shadow">
         
         <div class="flex w-2/5 justify-around">
@@ -767,346 +834,6 @@
         </div>
         <button onclick="cerrarDiaPerfecto()" style="width:100%;background:#6C63FF;color:white;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;">
             Continuar →
-        </button>
-    </div>
-</div>
-
-</div><!-- /desktop-content -->
-
-<!-- PANTALLAS FIXED — fuera del grid, hijos directos del body -->
-<div id="pantalla-auth" class="fixed inset-0 bg-slate-50 dark:bg-[#000000] z-50 flex flex-col px-8 gap-6 pt-[20vh] pb-12">    <div class="space-y-1">
-        <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
-        <p class="text-sm text-slate-400 font-medium">Tu tracker de hábitos personal</p>
-    </div>
-    <div class="flex bg-slate-100 dark:bg-white/10 rounded-2xl p-1 card-shadow">
-        <button id="tab-login" onclick="cambiarTab('login')"
-                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
-                style="background:#6C63FF; color:white; box-shadow: 0 4px 12px rgba(108,99,255,0.35);">
-            Iniciar sesión
-        </button>
-        <button id="tab-registro" onclick="cambiarTab('registro')"
-                class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
-                style="background:transparent; color:#94a3b8;">
-            Registrarse
-        </button>
-    </div>
-    <div id="form-login" class="flex-1 flex flex-col gap-3">
-        <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
-            <input type="email" id="login-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
-        </div>
-        <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
-            <input type="password" id="login-password" placeholder="Tu contraseña"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
-        </div>
-        <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
-    </div>
-    <div id="form-registro" class="flex-1 flex-col hidden space-y-4">
-        <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre</label>
-            <input type="text" id="registro-nombre" placeholder="ej. Ana, Carlos"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
-        </div>
-        <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
-            <input type="email" id="registro-correo" placeholder="tu@correo.com"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
-        </div>
-        <div>
-            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Contraseña</label>
-            <input type="password" id="registro-password" placeholder="Mínimo 4 caracteres"
-                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
-        </div>
-        <p id="registro-error" class="text-xs text-rose-500 font-medium hidden">Completa todos los campos.</p>
-    </div>
-    <div class="absolute bottom-0 left-0 right-0 px-8 pb-12 flex flex-col gap-3">
-        <button id="btn-login" onclick="loginUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
-                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
-            Entrar →
-        </button>
-        <button id="btn-registro" onclick="registrarUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
-                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
-            Crear cuenta →
-        </button>
-        <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
-    </div>
-</div>
-
-<div id="pantalla-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-40 flex flex-col hidden overflow-y-auto" style="transform: translateY(100%);">
-    <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
-        <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
-        <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-    </div>
-    <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mx-6 mb-6" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
-        <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">
-            <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
-        </div>
-        <div class="text-center">
-            <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
-            <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
-        </div>
-    </div>
-    <div class="px-6 space-y-3">
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
-            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Hábitos creados</span>
-            <span id="perfil-total-habitos" class="text-sm font-black text-black dark:text-white">0</span>
-        </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
-            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Días usando Habify</span>
-            <span id="perfil-dias-uso" class="text-sm font-black text-black dark:text-white">0</span>
-        </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
-            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Racha máxima</span>
-            <span id="perfil-racha-max" class="text-sm font-black text-black dark:text-white">—</span>
-        </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
-            <span class="text-sm font-bold text-slate-600 dark:text-white/50">Tu mejor momento</span>
-            <span id="perfil-hora-pico" class="text-sm font-black text-black dark:text-white">—</span>
-        </div>
-        <div class="bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex justify-between items-center border border-transparent dark:border-white/10 card-shadow">
-            <span class="text-sm font-bold text-slate-600 dark:text-white/60">Modo oscuro</span>
-            <button onclick="toggleModoOscuro()" id="btn-modo-oscuro"
-                class="w-12 h-6 rounded-full bg-slate-300 dark:bg-white relative transition-all">
-                <span id="toggle-circulo" class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-[#333538] transition-all dark:translate-x-6"></span>
-            </button>
-        </div>
-        <button onclick="abrirLogros()" class="w-full bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10 card-shadow active:scale-[0.98] transition-all">
-            <div class="flex items-center gap-3">
-                <span class="text-xl">🏆</span>
-                <div class="text-left">
-                    <p class="text-sm font-bold text-black dark:text-white">Mis logros</p>
-                    <p id="perfil-logros-count" class="text-xs text-slate-400 font-medium">Cargando...</p>
-                </div>
-            </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-    </div>
-    <div class="px-6 pt-6 pb-10 mt-2">
-        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
-            Cerrar sesión
-        </button>
-    </div>
-</div>
-<style>
-    body { display: flex; flex-direction: column; }
-    #desktop-topbar  { display: none; }
-    #desktop-sidebar { display: none; }
-    #desktop-content { display: contents; }
-    #col-izquierda   { display: contents; }
-    #col-derecha     { display: contents; }
-    #col-derecha-inicio,
-    #col-derecha-calendario,
-    #col-derecha-estadisticas { display: none !important; }
-
-    @media (min-width: 768px) {
-        body {
-            display: grid;
-            grid-template-rows: 56px 1fr;
-            grid-template-columns: 220px 1fr;
-            grid-template-areas: "topbar topbar" "sidebar content";
-            height: 100vh;
-            overflow: hidden;
-        }
-        #desktop-topbar {
-            grid-area: topbar;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 28px;
-            border-bottom: 1px solid rgba(0,0,0,0.07);
-            background: white;
-            z-index: 30;
-        }
-        .dark #desktop-topbar {
-            background: #000;
-            border-bottom-color: rgba(255,255,255,0.07);
-        }
-        #desktop-sidebar {
-            grid-area: sidebar;
-            display: flex;
-            flex-direction: column;
-            padding: 20px 12px;
-            border-right: 1px solid rgba(0,0,0,0.07);
-            background: white;
-            overflow-y: auto;
-            gap: 4px;
-        }
-        .dark #desktop-sidebar {
-            background: #000;
-            border-right-color: rgba(255,255,255,0.07);
-        }
-        #desktop-content {
-            grid-area: content;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #f8fafc;
-        }
-        .dark #desktop-content {
-            background: #0a0a0a;
-        }
-        #desktop-content > header {
-            padding: 24px 32px 16px;
-            border-bottom: 1px solid rgba(0,0,0,0.06);
-            background: white;
-            flex-shrink: 0;
-        }
-        .dark #desktop-content > header {
-            background: #000;
-            border-bottom-color: rgba(255,255,255,0.06);
-        }
-        #desktop-content > main {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            overflow: hidden;
-            flex: 1;
-            padding: 0;
-            height: 100%;
-        }
-        #col-izquierda,
-        #col-derecha {
-            display: block;
-            overflow-y: auto;
-            padding: 28px 32px;
-            height: 100%;
-            box-sizing: border-box;
-        }
-        #col-izquierda {
-            border-right: 1px solid rgba(0,0,0,0.06);
-        }
-        .dark #col-izquierda {
-            border-right-color: rgba(255,255,255,0.06);
-        }
-        #col-derecha-inicio.hidden,
-        #col-derecha-calendario.hidden,
-        #col-derecha-estadisticas.hidden { display: none; }
-        #col-derecha-inicio:not(.hidden),
-        #col-derecha-calendario:not(.hidden),
-        #col-derecha-estadisticas:not(.hidden) { display: block; }
-        .sidebar-btn {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 700;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.15s;
-            border: none;
-            background: transparent;
-            width: 100%;
-            text-align: left;
-        }
-        .sidebar-btn:hover {
-            background: #f1f5f9;
-            color: #0f172a;
-        }
-        .dark .sidebar-btn {
-            color: rgba(255,255,255,0.45);
-        }
-        .dark .sidebar-btn:hover {
-            background: rgba(255,255,255,0.06);
-            color: white;
-        }
-        .sidebar-btn.activo {
-            background: rgba(108,99,255,0.1);
-            color: #6C63FF;
-        }
-        .dark .sidebar-btn.activo {
-            background: rgba(108,99,255,0.15);
-            color: #a78bfa;
-        }
-        .sidebar-btn-crear {
-            margin-top: auto;
-            background: #6C63FF;
-            color: white;
-            justify-content: center;
-            box-shadow: 0 4px 16px rgba(108,99,255,0.35);
-        }
-        .sidebar-btn-crear:hover {
-            background: #5b52e8;
-            color: white;
-        }
-        #nav-bottom-mobile { display: none; }
-        #resumen-hoy { display: none; }
-        .modal-inner {
-            background: white;
-            border-radius: 28px;
-            width: 100%;
-            max-width: 860px;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.25);
-            animation: modalEntrada 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-        }
-        .dark .modal-inner {
-            background: #111;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        @keyframes modalEntrada {
-            from { transform: scale(0.95); opacity: 0; }
-            to   { transform: scale(1); opacity: 1; }
-        }
-        .modal-inner-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            overflow: hidden;
-            flex: 1;
-        }
-        .modal-col {
-            overflow-y: auto;
-            padding: 28px;
-        }
-        .modal-col:first-child {
-            border-right: 1px solid rgba(0,0,0,0.07);
-        }
-        .dark .modal-col:first-child {
-            border-right-color: rgba(255,255,255,0.07);
-        }
-    }
-</style>
-<!-- SHEET DE FOTO -->
-<div id="sheet-foto" class="fixed inset-0 z-[200] hidden" style="background:rgba(0,0,0,0.5);">
-    <div id="sheet-foto-inner" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#111] rounded-t-[28px] p-6 space-y-4" style="transform:translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);">
-        <div class="w-10 h-1 bg-slate-200 dark:bg-white/20 rounded-full mx-auto mb-2"></div>
-        <p class="text-base font-black text-black dark:text-white text-center">¿Agregar una foto?</p>
-        <p class="text-xs text-slate-400 text-center font-medium -mt-2">Un recuerdo de este hábito completado</p>
-
-        <!-- Preview de foto -->
-        <div id="sheet-foto-preview" class="hidden">
-            <img id="sheet-foto-img" class="w-full h-48 object-cover rounded-2xl" src="">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-            <button onclick="seleccionarFoto('galeria')"
-                class="flex flex-col items-center gap-2 p-4 bg-slate-100 dark:bg-white/10 rounded-2xl active:scale-95 transition-all">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-black dark:text-white"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span class="text-xs font-bold text-black dark:text-white">Galería</span>
-            </button>
-            <button onclick="seleccionarFoto('camara')"
-                class="flex flex-col items-center gap-2 p-4 bg-slate-100 dark:bg-white/10 rounded-2xl active:scale-95 transition-all">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-black dark:text-white"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <span class="text-xs font-bold text-black dark:text-white">Cámara</span>
-            </button>
-        </div>
-
-        <input type="file" id="input-foto" accept="image/*" class="hidden" onchange="onFotoSeleccionada(this)">
-
-        <button id="btn-guardar-foto" onclick="guardarFotoSheet()" class="hidden w-full py-4 rounded-2xl font-black text-white text-sm active:scale-[0.98] transition-all" style="background:#6C63FF;">
-            Guardar foto ✓
-        </button>
-        <button onclick="cerrarSheetFoto()" class="w-full py-3 rounded-2xl font-bold text-slate-400 text-sm active:scale-[0.98] transition-all">
-            Omitir
         </button>
     </div>
 </div>
