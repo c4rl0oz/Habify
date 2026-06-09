@@ -568,7 +568,8 @@ function calcularRacha(habito) {
             break;
         }
     }
-    return racha;
+    // La racha real empieza a partir del día 3
+    return racha >= 3 ? racha : 0;
 }
 
 // Devuelve true si la racha está en riesgo (último registro fue anteayer)
@@ -829,6 +830,7 @@ function actualizarUIUsuario(usuario) {
 }
 
 function abrirPerfil() {
+    actualizarNavActiva('perfil');
     if (!usuarioActual) return;
 
     const inicial = usuarioActual.nombre.charAt(0).toUpperCase();
@@ -1199,7 +1201,6 @@ async function ajustarContador(habitoId, fechaStr, delta) {
             `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
             { method: 'PATCH', headers, body: JSON.stringify({ cantidad: nuevaCantidad }) }
         );
-        if (navigator.vibrate) navigator.vibrate(30);
         sonarMetaContador();
         verificarNuevosLogros();
 
@@ -1274,7 +1275,6 @@ async function toggleHabitoDia(habitoId, fechaStr) {
             habito._registroIdMap = habito._registroIdMap || {};
             habito._registroIdMap[fechaStr] = registroId;
         }
-        if (navigator.vibrate) navigator.vibrate(30);
         sonarCheck();
         if (registroId) setTimeout(() => abrirSheetFoto(registroId, habitoId, fechaStr), 400);
     }
@@ -1447,15 +1447,17 @@ function generarCalendarioMensual() {
             }
         }
 
+        const esSeleccionadoCal = !esHoy && fechaSeleccionadaCal === fechaDia;
         cuadrilla.innerHTML += `
             <button onclick="verVistaRapidaDia('${fechaDia}', ${esFuturo})" ${esFuturo ? 'disabled' : ''}
-                    class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center ${clasesEstilo}"
+                    class="h-10 w-10 mx-auto font-bold text-xs active:scale-90 transition-all flex items-center justify-center relative ${clasesEstilo}"
                     style="${
-                        esHoy ? 'background:#6C63FF; color:white;' : 
-                        esFuturo ? `color:${esDark ? 'rgba(255,255,255,0.2)' : '#cbd5e1'};` : 
-                        tieneRegistros ? `background:${esDark ? '#2a2a2a' : '#f1f5f9'}; color:${esDark ? 'white' : '#1e293b'};` : 
+                        esHoy ? 'background:#6C63FF; color:white;' :
+                        esSeleccionadoCal ? `background:transparent; color:#6C63FF; border:2px solid #6C63FF;` :
+                        esFuturo ? `color:${esDark ? 'rgba(255,255,255,0.2)' : '#cbd5e1'};` :
+                        tieneRegistros ? `background:${esDark ? '#2a2a2a' : '#f1f5f9'}; color:${esDark ? 'white' : '#1e293b'};` :
                         `background:${esDark ? '#1a1a1a' : '#f1f5f9'}; color:${esDark ? 'rgba(255,255,255,0.35)' : '#475569'};`
-                    }">
+                    }; ${esHoy && fechaSeleccionadaCal && fechaSeleccionadaCal !== fechaDia ? 'outline: 3px solid rgba(108,99,255,0.4); outline-offset: 2px;' : ''}">
                 ${dia}
                 ${indicador}
             </button>
@@ -1470,7 +1472,11 @@ function cambiarMes(direccion) {
 }
 
 // Ahora recibe la fecha completa "YYYY-MM-DD" en lugar de solo el número de día
+let fechaSeleccionadaCal = null;
+
 function verVistaRapidaDia(fechaStr, esFuturo) {
+    fechaSeleccionadaCal = esFuturo ? null : fechaStr;
+    generarCalendarioMensual();
     const panelVistaRapida = document.getElementById('vista-rapida-dia');
     const tituloResumen = document.getElementById('resumen-dia-titulo');
     const contenedorLista = document.getElementById('lista-habitos-cumplidos');
@@ -1525,18 +1531,18 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
 }
 
 const MENSAJES_DIA_COMPLETO = [
-    '¡Todo listo por hoy! 🎉',
+    '¡Todo listo! 🎉',
     '¡Día perfecto! 💪',
-    '¡Lo lograste hoy! 🌟',
+    '¡Lo lograste! 🌟',
     '¡Imparable! 🔥',
-    '¡Día completado! 🚀',
+    '¡Completado! 🚀',
     '¡Increíble disciplina! 🏆',
-    '¡Hoy ganaste! ✨', 
-    '¡Día redondo! 🎯',
+    '¡Lo ganaste! ✨',
+    '¡Redondo! 🎯',
     '¡Eres una máquina! 🤖',
-    '¡Día de éxito! 🥳',
-    '¡Fantástico trabajo! 🎊',
-    '¡Día conquistado! 🏅',
+    '¡Éxito total! 🥳',
+    '¡Fantástico! 🎊',
+    '¡Conquistado! 🏅',
 ];
 
 function actualizarResumenHoy() {
@@ -1574,7 +1580,44 @@ function actualizarResumenHoy() {
 // ESTADÍSTICAS
 // ============================================================
 
+function actualizarHeaderModulo(pantalla) {
+    const titulo = document.getElementById('greeting-title');
+    const subtitulo = document.getElementById('greeting-subtitle');
+    if (!titulo) return;
+    const nombre = usuarioActual?.nombre || '';
+    const hora = new Date().getHours();
+    const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const titulos = {
+        inicio:       `${saludo}, ${nombre}!`,
+        calendario:   'Calendario',
+        estadisticas: 'Estadísticas',
+    };
+    const subtitulos = {
+        inicio:       subtitulo?.dataset.original || '',
+        calendario:   'Revisa tu historial',
+        estadisticas: 'Tu progreso en números',
+    };
+    titulo.innerText = titulos[pantalla] || titulos.inicio;
+    if (subtitulo) {
+        if (pantalla === 'inicio' && !subtitulo.dataset.original) {
+            subtitulo.dataset.original = subtitulo.innerText;
+        }
+        subtitulo.innerText = subtitulos[pantalla] ?? '';
+    }
+}
+
+function actualizarNavActiva(pantalla) {
+    const btns = { inicio: 'nav-btn-inicio', calendario: 'nav-btn-calendario', estadisticas: 'nav-btn-estadisticas', perfil: 'nav-btn-perfil' };
+    Object.entries(btns).forEach(([key, id]) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.style.color = key === pantalla ? '#6C63FF' : '#94a3b8';
+        btn.style.transform = key === pantalla ? 'scale(1.15)' : 'scale(1)';
+    });
+}
+
 function irAPantalla(pantalla) {
+    actualizarNavActiva(pantalla);
     const inicio = document.getElementById('pantalla-inicio');
     const calendario = document.getElementById('pantalla-calendario');
     const estadisticas = document.getElementById('pantalla-estadisticas');
@@ -1584,6 +1627,8 @@ function irAPantalla(pantalla) {
     inicio.classList.add('hidden');
     calendario.classList.add('hidden');
     estadisticas.classList.add('hidden');
+
+    actualizarHeaderModulo(pantalla);
 
     if (pantalla === 'inicio') {
         inicio.classList.remove('hidden');
@@ -2040,8 +2085,8 @@ function inicializarTiraDias() {
 
         btn.innerHTML = `
             <span style="font-size:9px; font-weight:500; color:${esSeleccionado ? 'rgba(255,255,255,0.7)' : 'rgba(100,100,100,0.6)'}">${nombreDia}</span>
-            <div style="width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${esSeleccionado ? '#6C63FF' : 'transparent'}; border:${esHoy && !esSeleccionado ? '1.5px solid #6C63FF' : 'none'}">
-                <span style="font-size:13px; font-weight:800; color:${esSeleccionado ? '#fff' : esHoy ? '#6C63FF' : 'inherit'}">${numeroDia}</span>
+            <div style=\"width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${esHoy ? '#6C63FF' : 'transparent'}; border:${!esHoy && esSeleccionado ? '2px solid #6C63FF' : 'none'}\">
+                <span style=\"font-size:13px; font-weight:800; color:${esHoy ? '#fff' : esSeleccionado ? '#6C63FF' : 'inherit'}\">${numeroDia}</span>
             </div>
             <div style="width:4px; height:4px; border-radius:50%; background:${tieneActividad ? (esSeleccionado ? 'rgba(255,255,255,0.7)' : '#6C63FF') : 'transparent'}"></div>
         `;
@@ -2101,7 +2146,6 @@ async function toggleHabitoHoy(id) {
             habito._registroIdMap = habito._registroIdMap || {};
             habito._registroIdMap[fechaRef] = registroId;
         }
-        if (navigator.vibrate) navigator.vibrate(50);
         sonarCheck();
         if (registroId) setTimeout(() => abrirSheetFoto(registroId, id, fechaRef), 400);
     }
@@ -2333,7 +2377,6 @@ function activarDragAndDrop() {
                 tarjeta.style.opacity = '0.7';
                 tarjeta.style.transform = 'scale(0.97)';
                 tarjeta.style.transition = 'transform 0.2s, opacity 0.2s';
-                if (navigator.vibrate) navigator.vibrate(40);
             }, 400);
         }, { passive: true });
 
