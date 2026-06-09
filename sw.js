@@ -53,8 +53,8 @@ function programarDesdeApp(recordatorios) {
 
             self.registration.showNotification(titulo, {
                 body: cuerpo,
-                icon: '/icon-192.png',
-                badge: '/icon-192.png',
+                icon: null,
+                badge: null,
                 tag: `habito-${nombre}-${hora}`,
                 renotify: true,
                 data: { url: self.registration.scope }

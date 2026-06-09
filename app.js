@@ -978,8 +978,14 @@ let swRegistration = null;
 async function registrarServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     try {
-        swRegistration = await navigator.serviceWorker.register('/sw.js');
-        console.log('SW registrado');
+        const swPath = location.pathname.replace(/\/[^/]*$/, '/') + 'sw.js';
+        swRegistration = await navigator.serviceWorker.register(swPath);
+        // Esperar a que el SW esté activo
+        await navigator.serviceWorker.ready;
+        swRegistration = await navigator.serviceWorker.getRegistration(swPath);
+        console.log('SW listo');
+        // Reprogramar recordatorios ahora que el SW está activo
+        programarRecordatorios();
     } catch(e) {
         console.warn('SW no disponible:', e);
     }
