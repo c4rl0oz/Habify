@@ -84,21 +84,93 @@
 
     /* FEEDBACK TÁCTIL VISUAL */
     .btn-press {
-        transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1),
-                    filter 0.15s ease !important;
-        transform: scale(0.84) !important;
-        filter: brightness(0.82) !important;
+        transition: transform 0.13s cubic-bezier(0.32, 0.72, 0, 1),
+                    box-shadow 0.13s ease,
+                    filter 0.13s ease !important;
+        transform: scale(0.88) !important;
+        filter: brightness(0.85) !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
     }
-    /* Botones pill grandes (crear, guardar, entrar) */
     .btn-press-pill {
-        transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1),
-                    filter 0.15s ease !important;
-        transform: scale(0.94) !important;
-        filter: brightness(0.88) !important;
+        transition: transform 0.13s cubic-bezier(0.32, 0.72, 0, 1),
+                    box-shadow 0.13s ease,
+                    filter 0.13s ease !important;
+        transform: scale(0.96) !important;
+        filter: brightness(0.92) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
     }
-    /* Suprimir highlight nativo del navegador en toda la app */
-    * {
-        -webkit-tap-highlight-color: transparent;
+    * { -webkit-tap-highlight-color: transparent; }
+
+    /* SOMBRAS DE BOTONES */
+    .btn-shadow {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .dark .btn-shadow {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .btn-shadow-accent {
+        box-shadow: 0 4px 16px rgba(108,99,255,0.45), 0 2px 6px rgba(108,99,255,0.25), 0 1px 2px rgba(0,0,0,0.1);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .btn-shadow-danger {
+        box-shadow: 0 4px 16px rgba(244,63,94,0.3), 0 2px 6px rgba(244,63,94,0.15);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    /* ANIMACIONES DE ENTRADA EN CASCADA */
+    .entrada-item {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: entradaItem 0.38s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    @keyframes entradaItem {
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ANIMACIÓN PANTALLA — spring */
+    @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes slideUpSpring {
+        0%   { transform: translateY(100%) scale(0.97); opacity: 0; }
+        60%  { transform: translateY(-2%) scale(1.005); opacity: 1; }
+        80%  { transform: translateY(1%) scale(0.998); }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .pantalla-spring {
+        animation: slideUpSpring 0.42s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    /* SHIMMER en carga */
+    @keyframes shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .shimmer {
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease infinite;
+    }
+
+    /* PULSE en racha */
+    @keyframes pulseBadge {
+        0%, 100% { transform: scale(1); }
+        50%       { transform: scale(1.08); }
+    }
+    .pulse-badge {
+        animation: pulseBadge 2s ease-in-out infinite;
+    }
+
+    /* BOUNCE en botón + */
+    @keyframes bouncePlus {
+        0%, 100% { transform: scale(1); }
+        40%       { transform: scale(1.12); }
+        70%       { transform: scale(0.95); }
+    }
+    .bounce-once {
+        animation: bouncePlus 0.4s cubic-bezier(0.32, 0.72, 0, 1);
     }
 </style>
 <head>
@@ -193,13 +265,13 @@
 
     <div class="absolute bottom-0 left-0 right-0 px-8 pb-12 flex flex-col gap-3">
         <button id="btn-login" onclick="loginUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all"
-                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all btn-shadow-accent"
+                style="background:#6C63FF;">
             Entrar →
         </button>
         <button id="btn-registro" onclick="registrarUsuario()"
-                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
-                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden btn-shadow-accent"
+                style="background:#6C63FF;">
             Crear cuenta →
         </button>
         <button id="btn-recuperar" onclick="enviarRecuperacion()"
@@ -218,10 +290,10 @@
     <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
         <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
         <div class="flex gap-2">
-            <button onclick="abrirEditarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+            <button onclick="abrirEditarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10 btn-shadow">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+            <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10 btn-shadow">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
@@ -293,7 +365,7 @@
 
     <!-- Cerrar sesión -->
     <div class="px-6 pt-6 pb-10 mt-2">
-        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all" style="box-shadow: 0 2px 12px rgba(244,63,94,0.1);">
+        <button onclick="cerrarSesion()" class="w-full border-2 border-rose-200 dark:border-rose-500/30 text-rose-500 font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all btn-shadow-danger">
             Cerrar sesión
         </button>
     </div>
@@ -339,8 +411,8 @@
         <p id="editar-exito" class="text-xs font-bold hidden" style="color:#6C63FF;"></p>
 
         <button onclick="guardarCambiosPerfil()"
-            class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] transition-all"
-            style="background:#6C63FF; box-shadow:0 6px 24px rgba(108,99,255,0.4);">
+            class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] transition-all btn-shadow-accent"
+            style="background:#6C63FF;">
             Guardar cambios
         </button>
     </div>
@@ -371,11 +443,11 @@
 
         <section id="pantalla-calendario" class="hidden space-y-5">
             <div class="flex justify-between items-center py-2">
-                <button onclick="cambiarMes(-1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
+                <button onclick="cambiarMes(-1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform btn-shadow">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
                 <h2 id="calendario-mes-titulo" class="text-xl font-bold text-black dark:text-white">Junio 2026</h2>
-                <button onclick="cambiarMes(1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform">
+                <button onclick="cambiarMes(1)" class="bg-slate-100 dark:bg-white/10 p-2.5 rounded-full text-black dark:text-white active:scale-90 transition-transform btn-shadow">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
             </div>
@@ -393,10 +465,10 @@
                 <div class="border-t border-slate-200 dark:border-white/10 pt-3 space-y-2">
                     <p class="text-xs font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider">Nota del día</p>
                     <textarea id="nota-dia" rows="3" placeholder="¿Cómo fue tu día? Escribe algo..."
-                        class="w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] rounded-xl text-sm font-medium text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none resize-none border border-slate-200 dark:border-white/10 transition-all">
+                        class="w-full px-3 py-2 bg-white dark:bg-[#1a1a1a] rounded-xl text-sm font-medium text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none resize-none border border-slate-200 dark:border-white/10 transition-all card-shadow">
                     </textarea>
                     <button onclick="guardarNotaDia()" 
-                            class="w-full text-white font-bold text-xs py-2.5 rounded-xl active:scale-[0.98] transition-all"
+                            class="w-full text-white font-bold text-xs py-2.5 rounded-xl active:scale-[0.98] transition-all btn-shadow-accent"
                             style="background:#6C63FF;">
                         Guardar nota
                     </button>
@@ -539,7 +611,7 @@
         </div>
 
         <div class="w-1/5 flex justify-center">
-            <button onclick="abrirModal()" class="text-white w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-transform" style="background:#6C63FF; box-shadow: 0 4px 16px rgba(108,99,255,0.45), 0 1px 4px rgba(108,99,255,0.3);">
+            <button onclick="abrirModal()" class="text-white w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all btn-shadow-accent" style="background:#6C63FF;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
                     <line x1="12" y1="5" x2="12" y2="19"/>
                     <line x1="5" y1="12" x2="19" y2="12"/>
@@ -582,12 +654,12 @@
             <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tipo de hábito</label>
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" id="tipo-check-btn" onclick="seleccionarTipoHabito('check')"
-                    class="py-3 rounded-2xl text-sm font-bold transition-all border-2"
+                    class="py-3 rounded-2xl text-sm font-bold transition-all border-2 btn-shadow-accent"
                     style="background:#6C63FF; color:white; border-color:#6C63FF;">
                     ✓ Completar
                 </button>
                 <button type="button" id="tipo-contador-btn" onclick="seleccionarTipoHabito('contador')"
-                    class="py-3 rounded-2xl text-sm font-bold transition-all border-2 border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/50">
+                    class="py-3 rounded-2xl text-sm font-bold transition-all border-2 border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/50 btn-shadow">
                     # Contador
                 </button>
             </div>
@@ -618,7 +690,7 @@
             </div>
             <input type="text" id="habito-nombre" maxlength="30" placeholder="Ej. Meditar, Leer, Correr..."
                 oninput="actualizarContador(this)"
-                class="w-full px-4 py-4 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all">
+                class="w-full px-4 py-4 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-base font-bold text-black dark:text-white placeholder-slate-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all card-shadow">
         </div>
 
         <!-- Color de acento -->
@@ -626,28 +698,28 @@
             <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Color</label>
             <div class="flex gap-3 flex-wrap">
                 <button type="button" onclick="seleccionarColor('#6C63FF', this)" data-color="#6C63FF"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#6C63FF; outline: 2px solid #6C63FF; outline-offset: 3px;"></button>
                 <button type="button" onclick="seleccionarColor('#FF6B6B', this)" data-color="#FF6B6B"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#FF6B6B"></button>
                 <button type="button" onclick="seleccionarColor('#00C9A7', this)" data-color="#00C9A7"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#00C9A7"></button>
                 <button type="button" onclick="seleccionarColor('#FF9F43', this)" data-color="#FF9F43"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#FF9F43"></button>
                 <button type="button" onclick="seleccionarColor('#4FC3F7', this)" data-color="#4FC3F7"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#4FC3F7"></button>
                 <button type="button" onclick="seleccionarColor('#F368E0', this)" data-color="#F368E0"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#F368E0"></button>
                 <button type="button" onclick="seleccionarColor('#A8E063', this)" data-color="#A8E063"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#A8E063"></button>
                 <button type="button" onclick="seleccionarColor('#778CA3', this)" data-color="#778CA3"
-                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all"
+                    class="color-btn w-9 h-9 rounded-full active:scale-90 transition-all btn-shadow"
                     style="background:#778CA3"></button>
             </div>
             <input type="hidden" id="habito-color" value="#6C63FF">
@@ -661,27 +733,27 @@
             <div class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
 
                 <button onclick="mostrarCategoriaEmoji('deporte', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Deporte
                 </button>
                 <button onclick="mostrarCategoriaEmoji('salud', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Salud
                 </button>
                 <button onclick="mostrarCategoriaEmoji('mente', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Mente
                 </button>
                 <button onclick="mostrarCategoriaEmoji('finanzas', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Finanzas
                 </button>
                 <button onclick="mostrarCategoriaEmoji('creatividad', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Creatividad
                 </button>
                 <button onclick="mostrarCategoriaEmoji('hogar', this)"
-                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all">
+                    class="cat-emoji-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/60 transition-all btn-shadow">
                     Hogar
                 </button>
             </div>
@@ -691,10 +763,10 @@
             </div>
 
             <!-- Emoji seleccionado preview -->
-            <div class="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-white/10 rounded-2xl">
+            <div class="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-white/10 rounded-2xl card-shadow">
                 <span id="emoji-preview" class="text-3xl">🏃</span>
                 <div>
-                    <p class="text-xs font-bold text-slate-400 dark:bg-[#1a1a1a]">Icono seleccionado</p>
+                    <p class="text-xs font-bold text-slate-400">Icono seleccionado</p>
                     <p id="emoji-nombre-preview" class="text-sm font-black text-black dark:text-white">Correr</p>
                 </div>
             </div>
@@ -705,13 +777,13 @@
         <div class="space-y-2">
             <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Días de la semana</label>
             <div class="flex justify-between gap-1.5" id="selector-dias">
-                <button type="button" data-dia="1" onclick="toggleDiaSemana(1, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">L</button>
-                <button type="button" data-dia="2" onclick="toggleDiaSemana(2, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">M</button>
-                <button type="button" data-dia="3" onclick="toggleDiaSemana(3, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">M</button>
-                <button type="button" data-dia="4" onclick="toggleDiaSemana(4, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">J</button>
-                <button type="button" data-dia="5" onclick="toggleDiaSemana(5, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">V</button>
-                <button type="button" data-dia="6" onclick="toggleDiaSemana(6, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">S</button>
-                <button type="button" data-dia="0" onclick="toggleDiaSemana(0, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95">D</button>
+                <button type="button" data-dia="1" onclick="toggleDiaSemana(1, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">L</button>
+                <button type="button" data-dia="2" onclick="toggleDiaSemana(2, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">M</button>
+                <button type="button" data-dia="3" onclick="toggleDiaSemana(3, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">M</button>
+                <button type="button" data-dia="4" onclick="toggleDiaSemana(4, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">J</button>
+                <button type="button" data-dia="5" onclick="toggleDiaSemana(5, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">V</button>
+                <button type="button" data-dia="6" onclick="toggleDiaSemana(6, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">S</button>
+                <button type="button" data-dia="0" onclick="toggleDiaSemana(0, this)" class="dia-semana-btn flex-1 py-2.5 rounded-2xl text-xs font-bold border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 transition-all active:scale-95 btn-shadow">D</button>
             </div>
             <p class="text-[10px] text-slate-400 font-medium">Sin selección = todos los días</p>
         </div>
@@ -822,17 +894,17 @@
             </button>
             <div class="flex gap-2">
                 <button id="detalle-btn-pin" onclick="togglePin(habitoDetalleActual?.id)"
-                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-all">
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-all btn-shadow">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V17z"/>
                     </svg>
                 </button>
                 <button onclick="abrirEditarHabito()"
-                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform btn-shadow">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
                 <button onclick="eliminarHabitoDesdeDetalle()"
-                        class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10 active:scale-90 transition-transform btn-shadow-danger">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                 </button>
             </div>

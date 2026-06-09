@@ -625,15 +625,22 @@ async function enviarRecuperacion() {
 // ============================================================
 function abrirPantallaAnimada(id) {
     const el = document.getElementById(id);
-    el.classList.remove('pantalla-slide-up', 'pantalla-slide-down');
+    el.classList.remove('pantalla-slide-up', 'pantalla-spring', 'pantalla-cerrando');
     el.style.transform = '';
     el.style.opacity = '';
     el.classList.remove('hidden');
-    void el.offsetHeight; // fuerza reflow
-    el.classList.add('pantalla-slide-up');
-    el.addEventListener('animationend', () => {
-        el.classList.remove('pantalla-slide-up');
-    }, { once: true });
+    void el.offsetHeight;
+    el.classList.add('pantalla-spring');
+    setTimeout(() => {
+        el.classList.remove('pantalla-spring');
+        el.style.transform = '';
+        el.style.opacity = '';
+    }, 420);
+    // Animar hijos con entrada en cascada
+    const items = el.querySelectorAll('.entrada-item');
+    items.forEach((item, i) => {
+        item.style.animationDelay = `${i * 0.05 + 0.1}s`;
+    });
 }
 
 function cerrarPantallaAnimada(id, callback) {
@@ -1248,7 +1255,7 @@ function renderizarHabitos() {
         const tarjetaHTML = `
     <div class="habito-card rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-grab active:cursor-grabbing"
         data-id="${habito.id}"
-        style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow:${yaHecho ? `0 4px 20px ${color}30` : '0 2px 12px rgba(0,0,0,0.06)'};"
+        style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow:${yaHecho ? `0 6px 24px ${color}40, 0 2px 8px ${color}20` : '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)'};"
          onclick="abrirDetalleHabito('${habito.id}')">
         <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]" style="background:${color}"></div>
         <div class="flex items-center gap-4 px-5 py-4 pl-6 relative">
@@ -1259,7 +1266,7 @@ function renderizarHabitos() {
                 <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
                 <div class="flex items-center gap-2 mt-0.5">
                     <p class="text-xs font-bold text-slate-400">${completados}/${habito.metaSemanal} esta semana</p>
-                    ${racha > 0 && !enRiesgo ? `<span class="text-xs font-bold" style="color:${color}">🔥 ${racha}</span>` : ''}
+                    ${racha > 0 && !enRiesgo ? `<span class="text-xs font-bold pulse-badge" style="color:${color}">🔥 ${racha}</span>` : ''}
                     ${racha > 0 && enRiesgo ? `<span class="text-xs font-bold text-amber-500">⚠️ ${racha} en riesgo</span>` : ''}
                 </div>
                 <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
@@ -1297,18 +1304,18 @@ function renderizarHabitos() {
     // Activar drag & drop
     activarDragAndDrop();
 
-    // Fade-in escalonado solo en carga inicial
+    // Animación de entrada en cascada solo en carga inicial
     if (animarCargaInicial) {
         const tarjetas = contenedor.querySelectorAll('.rounded-\\[20px\\]');
         tarjetas.forEach((t, i) => {
-            t.style.animationDelay = `${i * 60}ms`;
-            t.classList.add('fade-in-up');
-            t.addEventListener('animationend', () => {
-                t.classList.remove('fade-in-up');
+            t.style.animationDelay = `${i * 0.06}s`;
+            t.classList.add('entrada-item');
+            setTimeout(() => {
+                t.classList.remove('entrada-item');
                 t.style.opacity = '1';
                 t.style.transform = 'none';
                 t.style.animationDelay = '';
-            }, { once: true });
+            }, 380 + i * 60);
         });
         animarCargaInicial = false;
     }
@@ -1502,6 +1509,12 @@ async function eliminarHabito(id) {
 // ============================================================
 function abrirModal() {
     sonarAbrirCrear();
+    // Bounce en el botón +
+    const btnPlus = document.querySelector('button[onclick="abrirModal()"]');
+    if (btnPlus) {
+        btnPlus.classList.add('bounce-once');
+        setTimeout(() => btnPlus.classList.remove('bounce-once'), 400);
+    }
     const pantalla = document.getElementById('pantalla-crear-habito');
     abrirPantallaAnimada('pantalla-crear-habito');
     // Reset estado
@@ -2807,7 +2820,7 @@ function mostrarCategoriaEmoji(categoria, btnActivo) {
     emojis.forEach(({ e, n }) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-2xl active:scale-90 transition-all emoji-cat-btn';
+        btn.className = 'flex-shrink-0 w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-2xl active:scale-90 transition-all emoji-cat-btn btn-shadow';
         btn.innerHTML = e;
         btn.onclick = () => {
             document.getElementById('habito-emoji').value = e;
