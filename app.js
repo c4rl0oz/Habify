@@ -973,10 +973,23 @@ function mostrarError(mensaje) {
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 3500);
 }
+let swRegistration = null;
+
+async function registrarServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+        swRegistration = await navigator.serviceWorker.register('/sw.js');
+        console.log('SW registrado');
+    } catch(e) {
+        console.warn('SW no disponible:', e);
+    }
+}
+
 function inicializarApp() {
     inicializarModoOscuro();
     inicializarScrollResumen();
     inicializarFeedbackGlobal();
+    registrarServiceWorker();
     verificarSesion();
 }
 
@@ -1332,9 +1345,12 @@ function abrirModal() {
     btnContador.style.borderColor = '';
     // Reset recordatorio
     recordatorioActivo = false;
+    horasRecordatorioMultiple = ['08:00'];
     document.getElementById('toggle-recordatorio').style.background = '';
     document.getElementById('toggle-recordatorio-circulo').style.transform = 'translateX(0)';
     document.getElementById('recordatorio-hora-container').classList.add('hidden');
+    document.getElementById('recordatorio-hora-unica').classList.remove('hidden');
+    document.getElementById('recordatorio-horas-multiples').classList.add('hidden');
     horaRecordatorio = 8;
     minutoRecordatorio = 0;
     document.getElementById('recordatorio-hora').value = '08:00';
@@ -2232,6 +2248,55 @@ function actualizarInputHora() {
     document.getElementById('recordatorio-hora').value = `${hora}:${minuto}`;
 }
 
+let horasRecordatorioMultiple = ['08:00'];
+
+function actualizarUIRecordatorioPorTipo() {
+    const tipo = document.getElementById('habito-tipo')?.value || 'check';
+    const unica = document.getElementById('recordatorio-hora-unica');
+    const multiple = document.getElementById('recordatorio-horas-multiples');
+    if (!unica || !multiple) return;
+    if (tipo === 'contador') {
+        unica.classList.add('hidden');
+        multiple.classList.remove('hidden');
+        renderizarListaHorasRecordatorio();
+    } else {
+        unica.classList.remove('hidden');
+        multiple.classList.add('hidden');
+    }
+}
+
+function renderizarListaHorasRecordatorio() {
+    const lista = document.getElementById('lista-horas-recordatorio');
+    if (!lista) return;
+    lista.innerHTML = '';
+    horasRecordatorioMultiple.forEach((hora, i) => {
+        lista.innerHTML += `
+            <div class="flex items-center gap-2">
+                <input type="time" value="${hora}"
+                    onchange="horasRecordatorioMultiple[${i}] = this.value"
+                    class="flex-1 px-3 py-2.5 bg-white dark:bg-[#2a2a2a] rounded-xl text-sm font-bold text-black dark:text-white border border-slate-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#6C63FF]">
+                ${horasRecordatorioMultiple.length > 1 ? `
+                <button type="button" onclick="eliminarHoraRecordatorio(${i})"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+                    style="background:rgba(244,63,94,0.1); color:#f43f5e;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>` : ''}
+            </div>
+        `;
+    });
+}
+
+function agregarHoraRecordatorio() {
+    if (horasRecordatorioMultiple.length >= 8) return;
+    horasRecordatorioMultiple.push('12:00');
+    renderizarListaHorasRecordatorio();
+}
+
+function eliminarHoraRecordatorio(i) {
+    horasRecordatorioMultiple.splice(i, 1);
+    renderizarListaHorasRecordatorio();
+}
+
 function toggleRecordatorio() {
     recordatorioActivo = !recordatorioActivo;
     const btn = document.getElementById('toggle-recordatorio');
@@ -2243,6 +2308,7 @@ function toggleRecordatorio() {
         btn.style.background = color;
         circulo.style.transform = 'translateX(24px)';
         container.classList.remove('hidden');
+        actualizarUIRecordatorioPorTipo();
         solicitarPermisoNotificaciones();
     } else {
         btn.style.background = '';
@@ -2268,31 +2334,37 @@ async function solicitarPermisoNotificaciones() {
 }
 
 function programarRecordatorios() {
-    if (!misHabitos) return;
+    if (!misHabitos || !swRegistration) return;
+
+    const recordatorios = [];
 
     misHabitos.forEach(habito => {
         if (!habito.recordatorio) return;
+        // Si ya completó el hábito hoy (check), no notificar
+        if (habito.tipo !== 'contador' && completadoHoy(habito)) return;
 
-        const [hora, minuto] = habito.recordatorio.split(':').map(Number);
-        const ahora = new Date();
-        const recordatorio = new Date();
-        recordatorio.setHours(hora, minuto, 0, 0);
+        let horas = [];
+        try {
+            const parsed = JSON.parse(habito.recordatorio);
+            horas = Array.isArray(parsed) ? parsed : [habito.recordatorio];
+        } catch {
+            horas = [habito.recordatorio];
+        }
 
-        // Si la hora ya pasó hoy, no programar
-        if (recordatorio <= ahora) return;
+        horas.forEach(hora => {
+            recordatorios.push({
+                nombre: habito.nombre,
+                emoji: habito.emoji,
+                hora,
+                esContador: habito.tipo === 'contador',
+                unidad: habito.unidad || ''
+            });
+        });
+    });
 
-        // Si ya completó el hábito hoy, no notificar
-        if (completadoHoy(habito)) return;
-
-        const ms = recordatorio - ahora;
-        setTimeout(() => {
-            if (!completadoHoy(habito)) {
-                new Notification(`¡Recuerda tu hábito! ${habito.emoji}`, {
-                    body: `Aún no has completado "${habito.nombre}" hoy.`,
-                    icon: '/favicon.ico'
-                });
-            }
-        }, ms);
+    swRegistration.active?.postMessage({
+        type: 'PROGRAMAR_RECORDATORIOS',
+        recordatorios
     });
 }
 
@@ -2450,6 +2522,8 @@ function seleccionarTipoHabito(tipo) {
         btnCheck.style.borderColor = '';
         configContador.classList.remove('hidden');
     }
+    // Actualizar UI de recordatorio según tipo
+    if (recordatorioActivo) actualizarUIRecordatorioPorTipo();
 }
 
 function actualizarContador(input) {
@@ -2638,7 +2712,11 @@ async function crearHabitoNuevo() {
     btn.innerText = 'Creando...';
     btn.disabled = true;
 
-    const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
+    const recordatorio = recordatorioActivo
+        ? (document.getElementById('habito-tipo').value === 'contador'
+            ? JSON.stringify(horasRecordatorioMultiple)
+            : document.getElementById('recordatorio-hora').value)
+        : null;
     const tipo = document.getElementById('habito-tipo').value;
     const unidad = tipo === 'contador' ? document.getElementById('habito-unidad').value.trim() : null;
     const metaCantidad = tipo === 'contador' ? parseInt(document.getElementById('habito-meta-cantidad').value) : null;
@@ -2896,7 +2974,11 @@ async function guardarEdicionHabito() {
     btn.innerText = 'Guardando...';
     btn.disabled = true;
 
-    const recordatorio = recordatorioActivo ? document.getElementById('recordatorio-hora').value : null;
+    const recordatorio = recordatorioActivo
+        ? (document.getElementById('habito-tipo').value === 'contador'
+            ? JSON.stringify(horasRecordatorioMultiple)
+            : document.getElementById('recordatorio-hora').value)
+        : null;
     const diasSemanaStr = diasSeleccionados.length > 0 ? diasSeleccionados.join(',') : null;
     const resultado = await editarHabitoSupabase(habitoDetalleActual.id, nombre, emoji, meta, color, recordatorio, tipo, unidad, metaCantidad, diasSemanaStr);
 
