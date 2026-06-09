@@ -151,6 +151,24 @@
                 class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
         </div>
         <p id="login-error" class="text-xs text-rose-500 font-medium hidden">Correo o contraseña incorrectos.</p>
+        <button onclick="mostrarRecuperarPassword()" class="text-xs font-bold text-left active:opacity-70 transition-all" style="color:#6C63FF;">
+            ¿Olvidaste tu contraseña?
+        </button>
+    </div>
+
+    <!-- Formulario Recuperar contraseña -->
+    <div id="form-recuperar" class="flex-1 flex-col hidden space-y-4">
+        <div>
+            <p class="text-sm font-bold text-black dark:text-white mb-1">Recuperar contraseña</p>
+            <p class="text-xs text-slate-400 font-medium mb-4">Ingresa tu correo y te enviaremos una nueva contraseña temporal.</p>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo</label>
+            <input type="email" id="recuperar-correo" placeholder="tu@correo.com"
+                class="w-full px-4 py-3 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-semibold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all card-shadow">
+        </div>
+        <p id="recuperar-msg" class="text-xs font-medium hidden"></p>
+        <button onclick="cambiarTab('login')" class="text-xs font-bold text-left active:opacity-70" style="color:#6C63FF;">
+            ← Volver al login
+        </button>
     </div>
 
     <!-- Formulario Registro -->
@@ -184,6 +202,11 @@
                 style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
             Crear cuenta →
         </button>
+        <button id="btn-recuperar" onclick="enviarRecuperacion()"
+                class="w-full text-white font-bold text-sm py-4 rounded-2xl active:scale-[0.98] transition-all hidden"
+                style="background:#6C63FF; box-shadow: 0 6px 24px rgba(108,99,255,0.4), 0 2px 8px rgba(108,99,255,0.25);">
+            Enviar contraseña temporal →
+        </button>
         <p class="text-center text-xs text-slate-400 font-medium">Tus datos se guardan en la nube</p>
     </div>
 </div>
@@ -194,19 +217,30 @@
     <!-- Header -->
     <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
         <h2 class="text-2xl font-black text-black dark:text-white">Mi Perfil</h2>
-        <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        <div class="flex gap-2">
+            <button onclick="abrirEditarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onclick="cerrarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
     </div>
 
     <!-- Avatar -->
     <div class="flex flex-col items-center gap-3 py-8 border-b border-slate-100 dark:border-white/10 rounded-3xl mx-6 mb-6" style="background: linear-gradient(160deg, rgba(108,99,255,0.07) 0%, transparent 70%);">
-        <div class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow" style="background:#6C63FF;">
-            <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+        <div class="relative">
+            <div id="perfil-avatar-container" class="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-[#6C63FF]/20 avatar-shadow overflow-hidden" style="background:#6C63FF;">
+                <img id="perfil-foto" class="w-full h-full object-cover hidden" src="">
+                <span id="perfil-inicial" class="text-3xl font-black text-white">?</span>
+            </div>
+            <button onclick="cambiarFotoPerfil()" class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-all" style="background:#6C63FF; box-shadow:0 2px 8px rgba(108,99,255,0.4);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
         </div>
         <div class="text-center">
             <p id="perfil-nombre" class="text-xl font-black text-black dark:text-white">Usuario</p>
-            <p class="text-xs text-slate-400 font-medium">Miembro de Habify</p>
+            <p id="perfil-correo" class="text-xs text-slate-400 font-medium"></p>
         </div>
     </div>
 
@@ -264,6 +298,57 @@
         </button>
     </div>
 </div>
+<!-- PANTALLA EDITAR PERFIL -->
+<div id="pantalla-editar-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col hidden" style="transform: translateY(100%);">
+    <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
+        <h2 class="text-2xl font-black text-black dark:text-white">Editar perfil</h2>
+        <button onclick="cerrarEditarPerfil()" class="bg-slate-100 dark:bg-[#1a1a1a] p-2.5 rounded-full active:scale-90 transition-transform border border-transparent dark:border-white/10">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-6 pb-10 space-y-5">
+
+        <!-- Nombre -->
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nombre</label>
+            <input type="text" id="editar-nombre" maxlength="30" placeholder="Tu nombre"
+                class="w-full px-4 py-3.5 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-bold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all card-shadow">
+        </div>
+
+        <!-- Correo (solo lectura) -->
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Correo</label>
+            <div class="w-full px-4 py-3.5 bg-slate-100/50 dark:bg-[#1a1a1a]/50 rounded-2xl text-sm font-bold text-slate-400 dark:text-white/30 card-shadow">
+                <span id="editar-correo-display"></span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-medium px-1">El correo no se puede cambiar</p>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nueva contraseña</label>
+            <input type="password" id="editar-password-nueva" placeholder="Dejar vacío para no cambiar"
+                class="w-full px-4 py-3.5 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-bold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all card-shadow">
+        </div>
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Confirmar contraseña</label>
+            <input type="password" id="editar-password-confirmar" placeholder="Repetir nueva contraseña"
+                class="w-full px-4 py-3.5 bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl text-sm font-bold text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6C63FF] transition-all card-shadow">
+        </div>
+        <p id="editar-error" class="text-xs text-rose-500 font-medium hidden"></p>
+        <p id="editar-exito" class="text-xs font-bold hidden" style="color:#6C63FF;"></p>
+
+        <button onclick="guardarCambiosPerfil()"
+            class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] transition-all"
+            style="background:#6C63FF; box-shadow:0 6px 24px rgba(108,99,255,0.4);">
+            Guardar cambios
+        </button>
+    </div>
+</div>
+
+<!-- INPUT FOTO PERFIL -->
+<input type="file" id="input-foto-perfil" accept="image/*" class="hidden" onchange="onFotoPerfilSeleccionada(this)">
+
 <header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
 <div class="flex justify-between items-start mb-4">
         <div>

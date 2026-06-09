@@ -140,6 +140,46 @@ async function marcarHabitoSupabase(habitoId, usuarioId, fecha) {
     return data[0]?.id || null;
 }
 
+async function actualizarUsuario(usuarioId, campos) {
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/usuarios?id=eq.${usuarioId}`,
+        {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(campos)
+        }
+    );
+    return res.ok;
+}
+
+async function subirFotoPerfil(usuarioId, archivoBlob) {
+    const nombreArchivo = `${usuarioId}/avatar_${Date.now()}.jpg`;
+    const res = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/profile-photos/${nombreArchivo}`,
+        {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'image/jpeg',
+            },
+            body: archivoBlob
+        }
+    );
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/profile-photos/${nombreArchivo}`;
+}
+
+async function enviarCorreoRecuperacion(correo) {
+    // Buscar usuario por correo
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/usuarios?correo=eq.${encodeURIComponent(correo)}&select=id,nombre`,
+        { headers }
+    );
+    const data = await res.json();
+    return data.length > 0;
+}
+
 async function subirFotoRegistro(registroId, archivoBlob, usuarioId) {
     const nombreArchivo = `${usuarioId}/${registroId}_${Date.now()}.jpg`;
     const res = await fetch(

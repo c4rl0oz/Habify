@@ -3,7 +3,9 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
 // Escuchar mensajes desde la app
 self.addEventListener('message', e => {
+    console.log('[SW] Mensaje recibido:', e.data?.type);
     if (e.data?.type === 'PROGRAMAR_RECORDATORIOS') {
+        console.log('[SW] Programando', e.data.recordatorios?.length, 'recordatorios');
         programarDesdeApp(e.data.recordatorios);
     }
     if (e.data?.type === 'CANCELAR_RECORDATORIOS') {

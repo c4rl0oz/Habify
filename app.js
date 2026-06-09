@@ -466,6 +466,161 @@ function generarHistoricoFotos() {
 }
 
 // ============================================================
+// PERFIL — EDITAR Y FOTO
+// ============================================================
+
+function abrirEditarPerfil() {
+    if (!usuarioActual) return;
+    document.getElementById('editar-nombre').value = usuarioActual.nombre;
+    document.getElementById('editar-correo-display').textContent = usuarioActual.correo;
+    document.getElementById('editar-password-nueva').value = '';
+    document.getElementById('editar-password-confirmar').value = '';
+    document.getElementById('editar-error').classList.add('hidden');
+    document.getElementById('editar-exito').classList.add('hidden');
+    abrirPantallaAnimada('pantalla-editar-perfil');
+}
+
+function cerrarEditarPerfil() {
+    cerrarPantallaAnimada('pantalla-editar-perfil');
+}
+
+async function guardarCambiosPerfil() {
+    const nombre = document.getElementById('editar-nombre').value.trim();
+    const passNueva = document.getElementById('editar-password-nueva').value;
+    const passConfirmar = document.getElementById('editar-password-confirmar').value;
+    const errorEl = document.getElementById('editar-error');
+    const exitoEl = document.getElementById('editar-exito');
+
+    errorEl.classList.add('hidden');
+    exitoEl.classList.add('hidden');
+
+    if (!nombre) {
+        errorEl.textContent = 'El nombre no puede estar vacío.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    if (passNueva && passNueva.length < 4) {
+        errorEl.textContent = 'La contraseña debe tener al menos 4 caracteres.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    if (passNueva && passNueva !== passConfirmar) {
+        errorEl.textContent = 'Las contraseñas no coinciden.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const campos = { nombre };
+    if (passNueva) campos.password = passNueva;
+
+    const ok = await actualizarUsuario(usuarioActual.id, campos);
+    if (ok) {
+        usuarioActual.nombre = nombre;
+        if (passNueva) usuarioActual.password = passNueva;
+        actualizarUIUsuario(usuarioActual);
+        abrirPerfil();
+        exitoEl.textContent = '¡Cambios guardados!';
+        exitoEl.classList.remove('hidden');
+        setTimeout(() => cerrarEditarPerfil(), 1000);
+    } else {
+        errorEl.textContent = 'Error al guardar. Intenta de nuevo.';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+function cambiarFotoPerfil() {
+    document.getElementById('input-foto-perfil').value = '';
+    document.getElementById('input-foto-perfil').click();
+}
+
+function onFotoPerfilSeleccionada(input) {
+    const archivo = input.files[0];
+    if (!archivo) return;
+    comprimirImagen(archivo, async (blob) => {
+        const url = await subirFotoPerfil(usuarioActual.id, blob);
+        if (url) {
+            await actualizarUsuario(usuarioActual.id, { foto_url: url });
+            usuarioActual.foto_url = url;
+            actualizarAvatarPerfil(url);
+        }
+    });
+}
+
+function actualizarAvatarPerfil(fotoUrl) {
+    const foto = document.getElementById('perfil-foto');
+    const inicial = document.getElementById('perfil-inicial');
+    const headerFoto = document.getElementById('header-foto');
+    const headerInicial = document.getElementById('header-inicial');
+
+    if (fotoUrl) {
+        if (foto) { foto.src = fotoUrl; foto.classList.remove('hidden'); }
+        if (inicial) inicial.classList.add('hidden');
+        if (headerFoto) { headerFoto.src = fotoUrl; headerFoto.classList.remove('hidden'); }
+        if (headerInicial) headerInicial.classList.add('hidden');
+    } else {
+        if (foto) foto.classList.add('hidden');
+        if (inicial) inicial.classList.remove('hidden');
+        if (headerFoto) headerFoto.classList.add('hidden');
+        if (headerInicial) headerInicial.classList.remove('hidden');
+    }
+}
+
+// ============================================================
+// AUTH — RECUPERAR CONTRASEÑA
+// ============================================================
+
+function mostrarRecuperarPassword() {
+    document.getElementById('form-login').classList.add('hidden');
+    document.getElementById('form-registro').classList.add('hidden');
+    document.getElementById('form-recuperar').classList.remove('hidden');
+    document.getElementById('form-recuperar').style.display = 'flex';
+    document.getElementById('btn-login').classList.add('hidden');
+    document.getElementById('btn-registro').classList.add('hidden');
+    document.getElementById('btn-recuperar').classList.remove('hidden');
+    document.getElementById('recuperar-correo').value = '';
+    document.getElementById('recuperar-msg').classList.add('hidden');
+}
+
+async function enviarRecuperacion() {
+    const correo = document.getElementById('recuperar-correo').value.trim();
+    const msg = document.getElementById('recuperar-msg');
+    if (!correo) return;
+
+    const existe = await enviarCorreoRecuperacion(correo);
+    msg.classList.remove('hidden');
+    if (existe) {
+        // Generar contraseña temporal y guardarla
+        const palabras = ['Cielo','Luna','Sol','Mar','Viento','Roca','Fuego','Nieve','Bosque','Río','Árbol','Nube'];
+        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+        const numero = Math.floor(Math.random() * 900) + 100;
+        const tempPass = `${palabra}${numero}`;
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/usuarios?correo=eq.${encodeURIComponent(correo)}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ password: tempPass })
+            }
+        );
+        if (res.ok) {
+            msg.style.color = '#6C63FF';
+            msg.textContent = `Tu nueva contraseña temporal es: ${tempPass} — Úsala para entrar y cámbiala en tu perfil.`;
+        } else {
+            msg.style.color = '#f43f5e';
+            msg.textContent = 'Error al restablecer. Intenta de nuevo.';
+        }
+    } else {
+        msg.style.color = '#f43f5e';
+        msg.textContent = 'No encontramos ese correo registrado.';
+    }
+}
+
+// ============================================================
 // ANIMACIONES DE PANTALLA
 // ============================================================
 function abrirPantallaAnimada(id) {
@@ -619,10 +774,18 @@ function calcularRachaMaxima(habito) {
 // AUTENTICACIÓN CON SUPABASE
 // ============================================================
 function cambiarTab(tab) {
-    const tabLogin = document.getElementById('tab-login');
-    const tabRegistro = document.getElementById('tab-registro');
     const formLogin = document.getElementById('form-login');
     const formRegistro = document.getElementById('form-registro');
+    const formRecuperar = document.getElementById('form-recuperar');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegistro = document.getElementById('tab-registro');
+    const btnLogin = document.getElementById('btn-login');
+    const btnRegistro = document.getElementById('btn-registro');
+    const btnRecuperar = document.getElementById('btn-recuperar');
+
+    // Ocultar recuperar siempre al cambiar tab
+    if (formRecuperar) { formRecuperar.classList.add('hidden'); formRecuperar.style.display = ''; }
+    if (btnRecuperar) btnRecuperar.classList.add('hidden');
 
     if (tab === 'login') {
         tabLogin.style.background = '#6C63FF';
@@ -814,6 +977,10 @@ function actualizarUIUsuario(usuario) {
     const inicial = usuario.nombre.charAt(0).toUpperCase();
     const headerInicial = document.getElementById('header-inicial');
     if (headerInicial) headerInicial.innerText = inicial;
+    // Cargar foto de perfil si existe
+    if (usuario.foto_url) {
+        actualizarAvatarPerfil(usuario.foto_url);
+    }
 
     //saludo dinámico personalizado
 
@@ -834,8 +1001,16 @@ function abrirPerfil() {
     if (!usuarioActual) return;
 
     const inicial = usuarioActual.nombre.charAt(0).toUpperCase();
-    document.getElementById('perfil-inicial').innerText = inicial;
+    if (usuarioActual.foto_url) {
+        actualizarAvatarPerfil(usuarioActual.foto_url);
+    } else {
+        document.getElementById('perfil-inicial').innerText = inicial;
+        document.getElementById('perfil-foto').classList.add('hidden');
+        document.getElementById('perfil-inicial').classList.remove('hidden');
+    }
     document.getElementById('perfil-nombre').innerText = usuarioActual.nombre;
+    const correoEl = document.getElementById('perfil-correo');
+    if (correoEl) correoEl.textContent = usuarioActual.correo;
     document.getElementById('perfil-total-habitos').innerText = misHabitos.length;
 
     const fechaRegistro = new Date(usuarioActual.fecha_registro + "T00:00:00");
@@ -2340,13 +2515,14 @@ async function solicitarPermisoNotificaciones() {
 }
 
 function programarRecordatorios() {
+    console.log('programarRecordatorios llamado', { misHabitos: misHabitos?.length, swRegistration: !!swRegistration });
     if (!misHabitos || !swRegistration) return;
 
     const recordatorios = [];
 
     misHabitos.forEach(habito => {
         if (!habito.recordatorio) return;
-        // Si ya completó el hábito hoy (check), no notificar
+        console.log('Hábito con recordatorio:', habito.nombre, habito.recordatorio);
         if (habito.tipo !== 'contador' && completadoHoy(habito)) return;
 
         let horas = [];
@@ -2368,10 +2544,18 @@ function programarRecordatorios() {
         });
     });
 
-    swRegistration.active?.postMessage({
-        type: 'PROGRAMAR_RECORDATORIOS',
-        recordatorios
-    });
+    console.log('Recordatorios a programar:', recordatorios);
+    console.log('SW active:', swRegistration.active);
+
+    if (swRegistration.active) {
+        swRegistration.active.postMessage({
+            type: 'PROGRAMAR_RECORDATORIOS',
+            recordatorios
+        });
+        console.log('Mensaje enviado al SW');
+    } else {
+        console.warn('SW no está activo todavía');
+    }
 }
 
 // ============================================================
