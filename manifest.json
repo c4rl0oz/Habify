@@ -2,7 +2,7 @@
   "name": "Habify",
   "short_name": "Habify",
   "description": "Tu tracker de hábitos personal",
-  "start_url": "/",
+  "start_url": "/Habify/",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#6C63FF",
