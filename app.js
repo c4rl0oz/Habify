@@ -891,6 +891,7 @@ async function loginUsuario() {
 async function verificarSesion() {
     const usuarioId = localStorage.getItem('habify_usuario_id');
     if (!usuarioId) {
+        ocultarSplash();
         document.getElementById('pantalla-auth').classList.remove('hidden');
         return;
     }
@@ -917,6 +918,7 @@ async function verificarSesion() {
         await cargarDatosUsuario();
         document.getElementById('pantalla-auth').classList.add('hidden');
     } catch (e) {
+        ocultarSplash();
         mostrarError('Sin conexión. Revisa tu internet e intenta de nuevo.');
     } finally {
         mostrarCargando(false);
@@ -975,6 +977,8 @@ async function cargarDatosUsuario() {
         inicializarTiraDias();
         programarRecordatorios();
         verificarNuevosLogros();
+        ocultarSplash();
+        mostrarTutorialSiEsNecesario();
     } catch (e) {
         mostrarError('Revisa tu conexión.');
     }
@@ -4189,6 +4193,159 @@ function precargarDiasSemana(dias, color) {
         }
     });
 }
+// ─── FAQ ───────────────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: '¿Cómo creo un hábito?',
+    a: 'Toca el botón "+" en la esquina inferior derecha de la pantalla de inicio. Ponle un nombre, elige un color, un icono y configura los días en que quieres realizarlo.'
+  },
+  {
+    q: '¿Qué diferencia hay entre un hábito normal y uno de contador?',
+    a: 'Un hábito normal se marca como hecho o no hecho. Un hábito de contador tiene una meta numérica diaria (ej. tomar 8 vasos de agua) y puedes ir sumando avances parciales durante el día.'
+  },
+  {
+    q: '¿Cómo funcionan las rachas?',
+    a: 'La racha cuenta los días consecutivos que completas un hábito. Empieza a mostrarse a partir del tercer día seguido. Si un día no lo completas, la racha se reinicia.'
+  },
+  {
+    q: '¿Qué es el "día en riesgo"?',
+    a: 'Si ayer no completaste un hábito, aparece un indicador ámbar de "en riesgo". Es una señal de que tu racha puede estar en peligro, para que no pierdas el ritmo.'
+  },
+  {
+    q: '¿Para qué sirven los días de la semana en un hábito?',
+    a: 'Puedes configurar un hábito para que solo aplique ciertos días. Por ejemplo, "ejercicio" solo de lunes a viernes. En los días que no aplica, el hábito no cuenta ni afecta tus estadísticas.'
+  },
+  {
+    q: '¿Cómo funciona el sistema de logros?',
+    a: 'Habify tiene 12 logros que se desbloquean automáticamente conforme usas la app: completar tu primer hábito, mantener rachas largas, alcanzar días perfectos y más. Puedes verlos todos en "Mis logros".'
+  },
+  {
+    q: '¿Puedo agregar fotos a mis hábitos?',
+    a: 'Sí. Al marcar un hábito como completado, puedes tomar una foto o elegir una de tu galería como recuerdo. Todas tus fotos se guardan y puedes verlas en "Mis fotos" dentro de tu perfil.'
+  },
+  {
+    q: '¿Cómo cambio el orden de mis hábitos?',
+    a: 'Mantén presionado cualquier tarjeta de hábito y arrástrala a la posición que quieras. El nuevo orden se guarda automáticamente.'
+  },
+  {
+    q: '¿Qué es un "día perfecto"?',
+    a: 'Un día perfecto ocurre cuando completas todos tus hábitos del día. Habify lo celebra con una pantalla especial y confeti. ¡Intenta conseguir uno!'
+  },
+  {
+    q: '¿Mis datos se guardan en la nube?',
+    a: 'Sí. Habify usa Supabase para guardar todos tus hábitos, registros y fotos de forma segura en la nube. Puedes acceder desde cualquier dispositivo con tu cuenta.'
+  }
+];
+
+function abrirFAQ() {
+    const pantalla = document.getElementById('pantalla-faq');
+    const lista = document.getElementById('faq-lista');
+
+    // Render items si aún no están
+    if (!lista.hasChildNodes()) {
+        lista.innerHTML = FAQ_ITEMS.map((item, i) => `
+            <div class="bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl border border-transparent dark:border-white/10 card-shadow overflow-hidden">
+                <button onclick="toggleFAQ(${i})" class="w-full flex items-center justify-between px-4 py-4 text-left active:opacity-70 transition-opacity gap-3">
+                    <span class="text-sm font-bold text-black dark:text-white leading-snug">${item.q}</span>
+                    <svg id="faq-chevron-${i}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-slate-400 transition-transform duration-200"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="faq-respuesta-${i}" class="hidden px-4 pb-4">
+                    <p class="text-sm text-slate-500 dark:text-white/50 font-medium leading-relaxed">${item.a}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    pantalla.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        pantalla.style.transform = 'translateY(0)';
+        pantalla.style.transition = 'transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)';
+    });
+}
+
+function cerrarFAQ() {
+    const pantalla = document.getElementById('pantalla-faq');
+    pantalla.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+    pantalla.style.transform = 'translateY(100%)';
+    setTimeout(() => pantalla.classList.add('hidden'), 300);
+}
+
+function toggleFAQ(index) {
+    const respuesta = document.getElementById(`faq-respuesta-${index}`);
+    const chevron = document.getElementById(`faq-chevron-${index}`);
+    const abierto = !respuesta.classList.contains('hidden');
+    respuesta.classList.toggle('hidden', abierto);
+    chevron.style.transform = abierto ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+// ============================================================
+// SPLASH SCREEN
+// ============================================================
+function ocultarSplash() {
+    const splash = document.getElementById('pantalla-splash');
+    if (!splash) return;
+    splash.style.opacity = '0';
+    setTimeout(() => splash.classList.add('hidden'), 520);
+}
+// ============================================================
+// TUTORIAL ONBOARDING
+// ============================================================
+let tutorialPaso = 0;
+const TUTORIAL_TOTAL = 5;
+
+function mostrarTutorialSiEsNecesario() {
+    if (localStorage.getItem('habify_tutorial_visto')) return;
+    tutorialPaso = 0;
+    actualizarTutorial();
+    const pantalla = document.getElementById('pantalla-tutorial');
+    pantalla.classList.remove('hidden');
+    pantalla.style.opacity = '0';
+    requestAnimationFrame(() => {
+        pantalla.style.transition = 'opacity 0.4s ease';
+        pantalla.style.opacity = '1';
+    });
+}
+
+function actualizarTutorial() {
+    const slides = document.getElementById('tutorial-slides');
+    slides.style.transform = `translateX(-${tutorialPaso * 100}%)`;
+
+    for (let i = 0; i < TUTORIAL_TOTAL; i++) {
+        const dot = document.getElementById(`tutorial-dot-${i}`);
+        if (!dot) continue;
+        if (i === tutorialPaso) {
+            dot.style.width = '20px';
+            dot.style.background = '#6C63FF';
+        } else {
+            dot.style.width = '8px';
+            dot.style.background = 'rgba(255,255,255,0.2)';
+        }
+    }
+
+    const btnSiguiente = document.getElementById('tutorial-btn-siguiente');
+    const btnSaltar = document.getElementById('tutorial-btn-saltar');
+    const esUltimo = tutorialPaso === TUTORIAL_TOTAL - 1;
+    btnSiguiente.textContent = esUltimo ? '¡Empezar! 🚀' : 'Siguiente →';
+    btnSaltar.style.opacity = esUltimo ? '0' : '1';
+    btnSaltar.style.pointerEvents = esUltimo ? 'none' : '';
+}
+
+function tutorialSiguiente() {
+    if (tutorialPaso < TUTORIAL_TOTAL - 1) {
+        tutorialPaso++;
+        actualizarTutorial();
+    } else {
+        cerrarTutorial();
+    }
+}
+
+function cerrarTutorial() {
+    localStorage.setItem('habify_tutorial_visto', '1');
+    const pantalla = document.getElementById('pantalla-tutorial');
+    pantalla.style.transition = 'opacity 0.35s ease';
+    pantalla.style.opacity = '0';
+    setTimeout(() => pantalla.classList.add('hidden'), 370);
+}
+
 // ============================================================
 // ARRANCAR
 // ============================================================

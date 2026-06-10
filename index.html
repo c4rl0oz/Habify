@@ -189,7 +189,16 @@
     <script src="supabase.js"></script>
 </head>
 
-<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">    <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
+<body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">
+
+<!-- SPLASH SCREEN -->
+<div id="pantalla-splash" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black transition-opacity duration-500" style="opacity:1;">
+    <div class="flex flex-col items-center gap-3">
+        <p class="text-4xl font-black" style="color:#6C63FF; letter-spacing:-0.5px;">Habify</p>
+    </div>
+</div>
+
+<!-- PANTALLA DE BIENVENIDA / REGISTRO -->
 
 <div id="pantalla-auth" class="fixed inset-0 bg-slate-50 dark:bg-[#000000] z-50 flex flex-col px-8 gap-6 pt-[20vh] pb-12">    <div class="space-y-1">
         <h1 class="text-4xl font-black text-black dark:text-white">Habify</h1>
@@ -361,6 +370,16 @@
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
+        <button onclick="abrirFAQ()" class="w-full bg-slate-100 dark:bg-[#1a1a1a] p-4 rounded-2xl flex items-center justify-between border border-transparent dark:border-white/10 card-shadow active:scale-[0.98] transition-all">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">💬</span>
+                <div class="text-left">
+                    <p class="text-sm font-bold text-black dark:text-white">Preguntas frecuentes</p>
+                    <p class="text-xs text-slate-400 font-medium">Aprende a usar Habify</p>
+                </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
     </div>
 
     <!-- Cerrar sesión -->
@@ -370,7 +389,107 @@
         </button>
     </div>
 </div>
-<!-- PANTALLA EDITAR PERFIL -->
+<!-- PANTALLA FAQ -->
+<div id="pantalla-faq" class="fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col hidden" style="transform: translateY(100%);">
+    <div class="flex items-center justify-between px-6 pt-12 pb-4 shrink-0">
+        <button onclick="cerrarFAQ()" class="w-10 h-10 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 active:scale-90 transition-transform">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <h2 class="text-base font-black text-black dark:text-white">Preguntas frecuentes</h2>
+        <div class="w-10"></div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-6 pb-10 space-y-3">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 pb-1">Todo lo que necesitas saber</p>
+
+        <div id="faq-lista" class="space-y-2"></div>
+    </div>
+</div>
+<!-- TUTORIAL ONBOARDING -->
+<div id="pantalla-tutorial" class="fixed inset-0 z-[999] flex flex-col hidden" style="background:rgba(0,0,0,0.92);">
+    <div class="flex-1 flex flex-col items-center justify-center px-8 pb-8 pt-16">
+
+        <!-- Slides contenedor -->
+        <div class="w-full overflow-hidden" style="max-width:340px;">
+            <div id="tutorial-slides" class="flex transition-transform duration-400" style="transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);">
+
+                <!-- Slide 1: Bienvenida -->
+                <div class="tutorial-slide shrink-0 w-full flex flex-col items-center text-center gap-5">
+                    <div class="w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl" style="background:rgba(108,99,255,0.15); border:1.5px solid rgba(108,99,255,0.3);">🏠</div>
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#6C63FF;">Bienvenido a Habify</p>
+                        <p class="text-2xl font-black text-white leading-tight">Tu pantalla<br>de inicio</p>
+                        <p class="text-sm text-white/50 font-medium leading-relaxed">Aquí verás todos tus hábitos del día. Toca cualquiera para ver su detalle o marcarlo como completado.</p>
+                    </div>
+                </div>
+
+                <!-- Slide 2: Marcar hábitos -->
+                <div class="tutorial-slide shrink-0 w-full flex flex-col items-center text-center gap-5">
+                    <div class="w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl" style="background:rgba(108,99,255,0.15); border:1.5px solid rgba(108,99,255,0.3);">✅</div>
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#6C63FF;">Marca tu progreso</p>
+                        <p class="text-2xl font-black text-white leading-tight">Completa<br>tus hábitos</p>
+                        <p class="text-sm text-white/50 font-medium leading-relaxed">Toca el botón circular a la derecha de cada hábito para marcarlo. Puedes agregar una foto como recuerdo al completarlo.</p>
+                    </div>
+                </div>
+
+                <!-- Slide 3: Rachas -->
+                <div class="tutorial-slide shrink-0 w-full flex flex-col items-center text-center gap-5">
+                    <div class="w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl" style="background:rgba(108,99,255,0.15); border:1.5px solid rgba(108,99,255,0.3);">🔥</div>
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#6C63FF;">Mantén el ritmo</p>
+                        <p class="text-2xl font-black text-white leading-tight">Construye<br>tu racha</p>
+                        <p class="text-sm text-white/50 font-medium leading-relaxed">Completa un hábito varios días seguidos para activar tu racha 🔥. Aparece a partir del tercer día consecutivo.</p>
+                    </div>
+                </div>
+
+                <!-- Slide 4: Estadísticas -->
+                <div class="tutorial-slide shrink-0 w-full flex flex-col items-center text-center gap-5">
+                    <div class="w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl" style="background:rgba(108,99,255,0.15); border:1.5px solid rgba(108,99,255,0.3);">📊</div>
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#6C63FF;">Conoce tu progreso</p>
+                        <p class="text-2xl font-black text-white leading-tight">Estadísticas<br>y calendario</p>
+                        <p class="text-sm text-white/50 font-medium leading-relaxed">En las pestañas inferiores puedes ver tus gráficas semanales, tu calendario de actividad y comparar semanas.</p>
+                    </div>
+                </div>
+
+                <!-- Slide 5: Perfil y logros -->
+                <div class="tutorial-slide shrink-0 w-full flex flex-col items-center text-center gap-5">
+                    <div class="w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl" style="background:rgba(108,99,255,0.15); border:1.5px solid rgba(108,99,255,0.3);">🏆</div>
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-bold uppercase tracking-widest" style="color:#6C63FF;">¡Ya casi!</p>
+                        <p class="text-2xl font-black text-white leading-tight">Logros y<br>perfil</p>
+                        <p class="text-sm text-white/50 font-medium leading-relaxed">Desbloquea los 12 logros conforme usas la app. En tu perfil puedes ver tus stats, fotos y consultar las preguntas frecuentes.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Puntos indicadores -->
+        <div class="flex gap-2 mt-8">
+            <div id="tutorial-dot-0" class="h-2 rounded-full transition-all duration-300" style="width:20px; background:#6C63FF;"></div>
+            <div id="tutorial-dot-1" class="h-2 rounded-full transition-all duration-300" style="width:8px; background:rgba(255,255,255,0.2);"></div>
+            <div id="tutorial-dot-2" class="h-2 rounded-full transition-all duration-300" style="width:8px; background:rgba(255,255,255,0.2);"></div>
+            <div id="tutorial-dot-3" class="h-2 rounded-full transition-all duration-300" style="width:8px; background:rgba(255,255,255,0.2);"></div>
+            <div id="tutorial-dot-4" class="h-2 rounded-full transition-all duration-300" style="width:8px; background:rgba(255,255,255,0.2);"></div>
+        </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="shrink-0 px-8 pb-14 flex flex-col gap-3">
+        <button id="tutorial-btn-siguiente" onclick="tutorialSiguiente()"
+            class="w-full py-4 rounded-2xl font-black text-white text-sm active:scale-[0.98] transition-all"
+            style="background:#6C63FF; box-shadow:0 6px 24px rgba(108,99,255,0.4);">
+            Siguiente →
+        </button>
+        <button id="tutorial-btn-saltar" onclick="cerrarTutorial()"
+            class="w-full py-3 rounded-2xl font-bold text-sm active:opacity-60 transition-all"
+            style="color:rgba(255,255,255,0.35);">
+            Saltar
+        </button>
+    </div>
+</div>
 <div id="pantalla-editar-perfil" class="fixed inset-0 bg-white dark:bg-[#000000] z-50 flex flex-col hidden" style="transform: translateY(100%);">
     <div class="flex justify-between items-center px-6 pt-12 pb-4 shrink-0">
         <h2 class="text-2xl font-black text-black dark:text-white">Editar perfil</h2>
