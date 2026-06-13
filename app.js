@@ -3011,6 +3011,11 @@ async function crearHabitoNuevo() {
     sonarCrearHabito();
     renderizarHabitos();
     actualizarResumenHoy();
+
+    // Restaurar el botón para el próximo hábito
+    btn.innerText = 'Crear hábito →';
+    btn.disabled = false;
+
     cerrarModal();
 }
 
