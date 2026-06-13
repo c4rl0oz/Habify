@@ -49,6 +49,25 @@ async function loginUsuarioSupabase(correo, password) {
 }
 
 // ============================================================
+// PUSH SUBSCRIPTIONS
+// ============================================================
+async function guardarSuscripcionPush(usuarioId, endpoint, p256dh, auth, timezone) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({
+            usuario_id: usuarioId,
+            endpoint,
+            p256dh,
+            auth,
+            timezone,
+            user_agent: navigator.userAgent
+        })
+    });
+    if (!res.ok) console.warn('Error guardando suscripción push:', await res.text());
+}
+
+// ============================================================
 // HÁBITOS
 // ============================================================
 

@@ -975,7 +975,7 @@ async function cargarDatosUsuario() {
         renderizarHabitos();
         actualizarResumenHoy();
         inicializarTiraDias();
-        programarRecordatorios();
+        suscribirPush();
         verificarNuevosLogros();
         ocultarSplash();
         mostrarTutorialSiEsNecesario();
@@ -1170,10 +1170,46 @@ async function registrarServiceWorker() {
         await navigator.serviceWorker.ready;
         swRegistration = await navigator.serviceWorker.getRegistration(swPath);
         console.log('SW listo');
-        // Reprogramar recordatorios ahora que el SW está activo
-        programarRecordatorios();
     } catch(e) {
         console.warn('SW no disponible:', e);
+    }
+}
+
+// ============================================================
+// PUSH NOTIFICATIONS (Web Push)
+// ============================================================
+const VAPID_PUBLIC_KEY = 'BPsgKmu09C0DIAhLNAc2Im8Pkr4Hxp7TopY1GFwFLM6m3TqhVKZJKDruasTFoTNTpLN5iFkCbGD6nsjU3vT7azA';
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function suscribirPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!usuarioActual) return;
+    if (Notification.permission !== 'granted') return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+        }
+        const json = sub.toJSON();
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await guardarSuscripcionPush(usuarioActual.id, json.endpoint, json.keys.p256dh, json.keys.auth, tz);
+        console.log('Push suscrito y guardado ✓');
+    } catch (e) {
+        console.warn('No se pudo suscribir a push:', e);
     }
 }
 
@@ -2527,8 +2563,11 @@ async function solicitarPermisoNotificaciones() {
             alert('Necesitas permitir las notificaciones para usar esta función.');
             recordatorioActivo = false;
             toggleRecordatorio();
+            return;
         }
     }
+    // Permiso concedido → registrar este dispositivo para push
+    suscribirPush();
 }
 
 function programarRecordatorios() {
