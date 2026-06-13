@@ -848,6 +848,10 @@ async function registrarUsuario() {
         return;
     }
 
+    // Restaurar el botón (evita que quede atascado al cerrar sesión y volver)
+    btn.innerText = 'Crear cuenta →';
+    btn.disabled = false;
+
     usuarioActual = resultado.usuario;
     localStorage.setItem('habify_usuario_id', usuarioActual.id);
     await cargarDatosUsuario();
@@ -880,6 +884,10 @@ async function loginUsuario() {
         btn.disabled = false;
         return;
     }
+
+    // Restaurar el botón (evita que quede atascado al cerrar sesión y volver)
+    btn.innerText = 'Entrar →';
+    btn.disabled = false;
 
     usuarioActual = resultado.usuario;
     localStorage.setItem('habify_usuario_id', usuarioActual.id);
