@@ -694,64 +694,161 @@ function completadoHoy(habito) {
     return habito.registros.includes(hoyComoTexto());
 }
 
-// Calcula la racha actual (días consecutivos hasta hoy)
-function calcularRacha(habito) {
-    if (habito.registros.length === 0) return 0;
+// ============================================================
+//  RACHAS — 3 modos según el tipo de hábito
+//  A) diario  B) meta semanal flexible  C) días concretos
+// ============================================================
 
-    const registrosOrdenados = [...habito.registros].sort().reverse();
-    const hoy = hoyComoTexto();
-    const ayer = fechaComoTexto(
-        new Date(new Date() - 86400000).getFullYear(),
-        new Date(new Date() - 86400000).getMonth(),
-        new Date(new Date() - 86400000).getDate()
-    );
-    const anteayer = fechaComoTexto(
-        new Date(new Date() - 172800000).getFullYear(),
-        new Date(new Date() - 172800000).getMonth(),
-        new Date(new Date() - 172800000).getDate()
-    );
-
-    // Sin actividad en los últimos 2 días — racha rota
-    if (registrosOrdenados[0] !== hoy && 
-        registrosOrdenados[0] !== ayer && 
-        registrosOrdenados[0] !== anteayer) return 0;
-
-    let racha = 0;
-    let fechaEsperada = new Date(registrosOrdenados[0] + "T00:00:00");
-
-    for (let i = 0; i < registrosOrdenados.length; i++) {
-        const fechaRegistro = new Date(registrosOrdenados[i] + "T00:00:00");
-        const diff = (fechaEsperada - fechaRegistro) / 86400000;
-
-        if (diff === 0) {
-            racha++;
-            fechaEsperada = new Date(fechaRegistro - 86400000);
-        } else {
-            break;
-        }
-    }
-    // La racha real empieza a partir del día 3
-    return racha >= 3 ? racha : 0;
+// Lunes (00:00) de la semana a la que pertenece una fecha
+function lunesDeLaSemana(fecha) {
+    const d = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    const dow = d.getDay(); // 0=Dom .. 6=Sáb
+    d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+    return d;
+}
+function claveSemana(fecha) {
+    const l = lunesDeLaSemana(fecha);
+    return fechaComoTexto(l.getFullYear(), l.getMonth(), l.getDate());
 }
 
-// Devuelve true si la racha está en riesgo (último registro fue anteayer)
-function rachaEnRiesgo(habito) {
-    if (habito.registros.length === 0) return false;
-    const registrosOrdenados = [...habito.registros].sort().reverse();
-    const hoy = hoyComoTexto();
-    const ayer = fechaComoTexto(
-        new Date(new Date() - 86400000).getFullYear(),
-        new Date(new Date() - 86400000).getMonth(),
-        new Date(new Date() - 86400000).getDate()
-    );
-    const anteayer = fechaComoTexto(
-        new Date(new Date() - 172800000).getFullYear(),
-        new Date(new Date() - 172800000).getMonth(),
-        new Date(new Date() - 172800000).getDate()
-    );
-    return registrosOrdenados[0] === anteayer && 
-           registrosOrdenados[0] !== hoy && 
-           registrosOrdenados[0] !== ayer;
+// Determina el tipo de racha del hábito
+function tipoRacha(habito) {
+    const diasFijos = habito.diasSemana && habito.diasSemana.length > 0 && habito.diasSemana.length < 7;
+    if (diasFijos) return 'dias_fijos';                                  // Caso C
+    return (habito.metaSemanal && habito.metaSemanal < 7) ? 'semanal' : 'diario'; // B / A
+}
+
+// Motor principal: { tipo, dias, semanas, enRiesgo }
+function analizarRacha(habito) {
+    const tipo = tipoRacha(habito);
+    if (!habito.registros || habito.registros.length === 0)
+        return { tipo, dias: 0, semanas: 0, enRiesgo: false };
+
+    // ---------- Caso A: todos los días (consecutivo, 1 día de margen) ----------
+    if (tipo === 'diario') {
+        const ord = [...habito.registros].sort().reverse();
+        const hoy = hoyComoTexto();
+        const t = Date.now();
+        const ayer = fechaComoTexto(new Date(t-86400000).getFullYear(), new Date(t-86400000).getMonth(), new Date(t-86400000).getDate());
+        const anteayer = fechaComoTexto(new Date(t-172800000).getFullYear(), new Date(t-172800000).getMonth(), new Date(t-172800000).getDate());
+        if (ord[0] !== hoy && ord[0] !== ayer && ord[0] !== anteayer)
+            return { tipo, dias: 0, semanas: 0, enRiesgo: false };
+        let racha = 0, esperada = new Date(ord[0] + 'T00:00:00');
+        for (let i = 0; i < ord.length; i++) {
+            const f = new Date(ord[i] + 'T00:00:00');
+            if ((esperada - f) / 86400000 === 0) { racha++; esperada = new Date(f - 86400000); }
+            else break;
+        }
+        return racha >= 3
+            ? { tipo, dias: racha, semanas: 0, enRiesgo: ord[0] === anteayer }
+            : { tipo, dias: 0, semanas: 0, enRiesgo: false };
+    }
+
+    const setReg = new Set(habito.registros);
+    const primera = new Date([...habito.registros].sort()[0] + 'T00:00:00');
+    const hoy0 = new Date(); hoy0.setHours(0,0,0,0);
+    let cursor = lunesDeLaSemana(new Date());
+    let dias = 0, semanas = 0, enRiesgo = false, idx = 0;
+
+    // ---------- Caso B: meta semanal flexible ----------
+    if (tipo === 'semanal') {
+        const meta = habito.metaSemanal;
+        const porSemana = {};
+        for (const f of habito.registros) {
+            const k = claveSemana(new Date(f + 'T00:00:00'));
+            porSemana[k] = (porSemana[k] || 0) + 1;
+        }
+        while (true) {
+            const fin = new Date(cursor); fin.setDate(cursor.getDate() + 6);
+            if (fin < primera) break;
+            const count = porSemana[fechaComoTexto(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())] || 0;
+            if (idx === 0) {
+                dias += count;
+                if (count >= meta) semanas++;
+                if (count < meta && new Date().getDay() === 0) enRiesgo = true; // domingo sin cumplir
+            } else {
+                if (count >= meta) { semanas++; dias += count; } else break;
+            }
+            cursor.setDate(cursor.getDate() - 7); idx++;
+        }
+        const umbral = meta === 1 ? 1 : 2;
+        if (dias < umbral) return { tipo, dias: 0, semanas: 0, enRiesgo: false };
+        return { tipo, dias, semanas, enRiesgo };
+    }
+
+    // ---------- Caso C: días concretos (rompe si falta cualquier día programado) ----------
+    const prog = habito.diasSemana;
+    while (true) {
+        const lunes = new Date(cursor);
+        const fin = new Date(lunes); fin.setDate(lunes.getDate() + 6);
+        if (fin < primera) break;
+        let totalProg = 0, hechos = 0, faltadosPasados = 0;
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(lunes); d.setDate(lunes.getDate() + i);
+            if (!prog.includes(d.getDay())) continue;
+            totalProg++;
+            if (setReg.has(fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate()))) hechos++;
+            else if (d < hoy0) faltadosPasados++;
+        }
+        if (idx === 0) {
+            dias += hechos;
+            if (totalProg > 0 && hechos === totalProg) semanas++;
+            if (faltadosPasados > 0) enRiesgo = true; // ya falló un día → se romperá al cerrar la semana
+        } else {
+            if (hechos === totalProg) { semanas++; dias += hechos; } else break;
+        }
+        cursor.setDate(cursor.getDate() - 7); idx++;
+    }
+    if (dias < 2) return { tipo, dias: 0, semanas: 0, enRiesgo: false };
+    return { tipo, dias, semanas, enRiesgo };
+}
+
+// Wrappers para mantener compatible el resto del código
+function calcularRacha(habito) { return analizarRacha(habito).dias; }
+function calcularRachaSemanas(habito) { return analizarRacha(habito).semanas; }
+function rachaEnRiesgo(habito) { return analizarRacha(habito).enRiesgo; }
+
+// Sufijo "· N sem" para hábitos semanales / de días fijos
+function sufijoSemanas(habito) {
+    const a = analizarRacha(habito);
+    if (a.tipo === 'diario' || a.semanas <= 0) return '';
+    return ` · ${a.semanas} sem`;
+}
+
+// Pinta los recordatorios del hábito en el detalle
+function renderizarRecordatoriosDetalle(habito) {
+    const cont = document.getElementById('detalle-recordatorios');
+    if (!cont) return;
+
+    let horas = [];
+    if (habito.recordatorio) {
+        try {
+            const parsed = JSON.parse(habito.recordatorio);
+            horas = Array.isArray(parsed) ? parsed : [habito.recordatorio];
+        } catch {
+            horas = [habito.recordatorio];
+        }
+    }
+    horas = horas.filter(Boolean).sort();
+
+    if (horas.length === 0) {
+        cont.innerHTML = `
+            <div class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100/70 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-400">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 01-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0118 8"/><path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 00-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                Sin recordatorios activos
+            </div>`;
+        return;
+    }
+
+    const color = habito.color || '#6C63FF';
+    cont.innerHTML = horas.map(h => `
+        <div class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-100/70 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10">
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:${color}18;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            </span>
+            <span class="text-sm font-bold text-black dark:text-white">${h}</span>
+        </div>
+    `).join('');
 }
 
 function calcularRachaMaxima(habito) {
@@ -1314,8 +1411,8 @@ function renderizarHabitos() {
                 <p class="text-sm font-black text-black dark:text-white truncate">${habito.nombre}</p>
                 <div class="flex items-center gap-2 mt-0.5">
                     <p class="text-xs font-bold text-slate-400">${completados}/${habito.metaSemanal} esta semana</p>
-                    ${racha > 0 && !enRiesgo ? `<span class="text-xs font-bold pulse-badge" style="color:${color}">🔥 ${racha}</span>` : ''}
-                    ${racha > 0 && enRiesgo ? `<span class="text-xs font-bold text-amber-500">⚠️ ${racha} en riesgo</span>` : ''}
+                    ${racha > 0 && !enRiesgo ? `<span class="text-xs font-bold pulse-badge" style="color:${color}">🔥 ${racha}${sufijoSemanas(habito)}</span>` : ''}
+                    ${racha > 0 && enRiesgo ? `<span class="text-xs font-bold text-amber-500">⚠️ ${racha}${sufijoSemanas(habito)} en riesgo</span>` : ''}
                 </div>
                 <div class="mt-2 h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
                     <div class="h-full rounded-full transition-all duration-500" style="width:${porcentaje}%; background:${color}"></div>
@@ -1391,11 +1488,17 @@ async function ajustarContadorDetalle(delta) {
     if (labelEl) labelEl.innerText = `${cantidadHoy} / ${meta} ${habito.unidad || ''}`;
 
     // Actualizar stats de racha
-    document.getElementById('stat-racha-actual').innerText = calcularRacha(habito);
+    const _r = analizarRacha(habito);
+    document.getElementById('stat-racha-actual').innerText = _r.dias;
+    const _lblRacha = document.querySelector('#stat-card-racha p:last-child');
+    if (_lblRacha) _lblRacha.innerText = (_r.tipo !== 'diario' && _r.semanas > 0) ? `Racha · ${_r.semanas} sem` : 'Racha actual';
     document.getElementById('stat-total').innerText = habito.registros.length;
 
     // Actualizar mapa de actividad
     generarMapaActividad(habito);
+
+    // Mostrar recordatorios del hábito
+    renderizarRecordatoriosDetalle(habito);
 
     // Re-renderizar tarjetas para reflejar el cambio de estado
     animarCargaInicial = false;
@@ -2147,7 +2250,7 @@ function generarListaRachas() {
                 </div>
                 <div class="text-right">
                     <p class="text-sm font-black ${rachaEnRiesgo(habito) ? 'text-amber-500' : 'text-black dark:text-white'}">${racha > 0 ? (rachaEnRiesgo(habito) ? `⚠️ ${racha}` : `🔥 ${racha}`) : '—'}</p>
-                    <p class="text-xs font-medium ${rachaEnRiesgo(habito) ? 'text-amber-400' : 'text-slate-400'}">${racha > 0 ? (rachaEnRiesgo(habito) ? '¡complétalo hoy!' : 'días') : 'sin racha'}</p>
+                    <p class="text-xs font-medium ${rachaEnRiesgo(habito) ? 'text-amber-400' : 'text-slate-400'}">${racha > 0 ? (rachaEnRiesgo(habito) ? '¡complétalo hoy!' : `días${sufijoSemanas(habito)}`) : 'sin racha'}</p>
                 </div>
             </div>
         `;
@@ -3088,6 +3191,7 @@ function abrirDetalleHabito(id) {
     generarMapaActividad(habito);
     generarUltimosRegistros(habito);
     actualizarBotonFotoDetalle(habito);
+    renderizarRecordatoriosDetalle(habito);
 
     // Mostrar contador en detalle si aplica
     const contadorDetalle = document.getElementById('detalle-contador');
