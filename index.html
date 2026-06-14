@@ -175,9 +175,8 @@
 </style>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Habify</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6C63FF">
@@ -190,6 +189,10 @@
             darkMode: 'class'
         }
     </script>
+    <style>
+        /* Headers respetan el notch / Dynamic Island en iPhone */
+        .pt-12 { padding-top: calc(env(safe-area-inset-top) + 1rem) !important; }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="supabase.js"></script>
 </head>
@@ -545,7 +548,7 @@
 <!-- INPUT FOTO PERFIL -->
 <input type="file" id="input-foto-perfil" accept="image/*" class="hidden" onchange="onFotoPerfilSeleccionada(this)">
 
-<header class="bg-white dark:bg-[#000000] px-6 pt-8 pb-4 shrink-0">
+<header class="bg-white dark:bg-[#000000] px-6 pt-12 pb-4 shrink-0">
 <div class="flex justify-between items-start mb-4">
         <div>
             <h1 id="greeting-title" class="text-3xl font-bold tracking-tight text-black dark:text-white leading-tight">Buenos Días!</h1>
@@ -722,7 +725,7 @@
 
 <!-- Barra de navegación inferior -->
 
-<div class="absolute bottom-4 left-0 right-0 px-6 z-20 shrink-0">
+<div class="absolute left-0 right-0 px-6 z-20 shrink-0" style="bottom: max(1rem, env(safe-area-inset-bottom));">
     <nav class="bg-slate-200/95 dark:bg-[#1a1a1a] backdrop-blur-md rounded-[24px] h-16 flex items-center justify-between px-2 border border-slate-300/30 dark:border-white/10 nav-shadow">
         
         <div class="flex w-2/5 justify-around">
