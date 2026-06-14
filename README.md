@@ -159,3 +159,10 @@ Para recibir notificaciones en iPhone/iPad, la app debe **instalarse en la panta
 ## 📄 Notas
 
 Habify es un proyecto personal en evolución. La arquitectura prioriza la simplicidad (tres archivos de frontend, sin build step) y una experiencia visual limpia con estética nativa de iOS.
+
+---
+
+https://c4rl0oz.github.io/Habify/
+
+---
+
