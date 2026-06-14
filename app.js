@@ -815,6 +815,35 @@ function sufijoSemanas(habito) {
     return ` · ${a.semanas} sem`;
 }
 
+// ¿Este hábito cuenta para las estadísticas de un día concreto?
+function aplicaEnDia(habito, fechaStr) {
+    // No cuenta antes de existir
+    if (habito.fechaCreacion && habito.fechaCreacion.slice(0, 10) > fechaStr) return false;
+
+    const tipo = tipoRacha(habito);
+
+    if (tipo === 'dias_fijos') {
+        const dow = new Date(fechaStr + 'T00:00:00').getDay();
+        return habito.diasSemana.includes(dow);
+    }
+
+    if (tipo === 'semanal') {
+        // Opción 1: pendiente cada día hasta cumplir la meta de esa semana
+        const meta = habito.metaSemanal;
+        const f = new Date(fechaStr + 'T00:00:00');
+        const lunes = lunesDeLaSemana(f);
+        let hechosAntes = 0;
+        for (const r of habito.registros) {
+            const fr = new Date(r + 'T00:00:00');
+            if (fr >= lunes && fr < f) hechosAntes++; // completados antes de este día, en su semana
+        }
+        return hechosAntes < meta;
+    }
+
+    // diario
+    return true;
+}
+
 // Pinta los recordatorios del hábito en el detalle
 function renderizarRecordatoriosDetalle(habito) {
     const cont = document.getElementById('detalle-recordatorios');
@@ -1911,23 +1940,14 @@ function actualizarResumenHoy() {
     if (!el) return;
 
     const hoyStr = hoyComoTexto();
-    const total = misHabitos.filter(h => {
-        if (!h.diasSemana || h.diasSemana.length === 0) return true;
-        const diaSemana = new Date().getDay();
-        return h.diasSemana.includes(diaSemana);
-    }).length;
+    const total = misHabitos.filter(h => aplicaEnDia(h, hoyStr)).length;
 
     if (total === 0) {
         el.innerText = "No tienes hábitos aún. ¡Crea uno!";
         return;
     }
 
-    const diaSemanaHoy = new Date().getDay();
-    const completadosHoy = misHabitos.filter(h => {
-        if (!completadoHoy(h)) return false;
-        if (!h.diasSemana || h.diasSemana.length === 0) return true;
-        return h.diasSemana.includes(diaSemanaHoy);
-    }).length;
+    const completadosHoy = misHabitos.filter(h => aplicaEnDia(h, hoyStr) && completadoHoy(h)).length;
 
     if (completadosHoy === total) {
         const idx = Math.floor(Math.random() * MENSAJES_DIA_COMPLETO.length);
@@ -2038,7 +2058,7 @@ function generarEstadisticas() {
     if (labelProd) labelProd.innerText = fechaRef === hoyStr ? 'PRODUCTIVIDAD HOY' : `DÍA ${fecha.getDate()} DE ${nombresMeses[fecha.getMonth()].toUpperCase()}`;
 
     // --- PRODUCTIVIDAD DEL DÍA SELECCIONADO ---
-    const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fechaRef);
+    const habitosDelDia = misHabitos.filter(h => aplicaEnDia(h, fechaRef));
     const total = habitosDelDia.length;
     const hechos = habitosDelDia.filter(h => h.registros.includes(fechaRef)).length;
     const porcentaje = total === 0 ? 0 : Math.round((hechos / total) * 100);
@@ -2873,21 +2893,27 @@ function seleccionarTipoHabito(tipo) {
     const configContador = document.getElementById('config-contador');
     const color = document.getElementById('habito-color').value || '#6C63FF';
 
+    const glow = `0 6px 24px ${color}45, 0 2px 8px ${color}30`;
+
     if (tipo === 'check') {
         btnCheck.style.background = color;
         btnCheck.style.color = 'white';
         btnCheck.style.borderColor = color;
+        btnCheck.style.boxShadow = glow;
         btnContador.style.background = 'transparent';
         btnContador.style.color = '';
         btnContador.style.borderColor = '';
+        btnContador.style.boxShadow = '';
         configContador.classList.add('hidden');
     } else {
         btnContador.style.background = color;
         btnContador.style.color = 'white';
         btnContador.style.borderColor = color;
+        btnContador.style.boxShadow = glow;
         btnCheck.style.background = 'transparent';
         btnCheck.style.color = '';
         btnCheck.style.borderColor = '';
+        btnCheck.style.boxShadow = '';
         configContador.classList.remove('hidden');
     }
     // Actualizar UI de recordatorio según tipo
@@ -3890,12 +3916,7 @@ function verificarDiaPerfecto() {
     const yaVisto = localStorage.getItem('habify_dia_perfecto') === hoy;
     if (yaVisto) return;
 
-    const diaSemanaHoy = new Date().getDay();
-    const habitosHoy = misHabitos.filter(h => {
-        if (h.fechaCreacion > hoy) return false;
-        if (!h.diasSemana || h.diasSemana.length === 0) return true;
-        return h.diasSemana.includes(diaSemanaHoy);
-    });
+    const habitosHoy = misHabitos.filter(h => aplicaEnDia(h, hoy));
     if (habitosHoy.length === 0) return;
 
     const todosCompletos = habitosHoy.every(h => h.registros.includes(hoy));
