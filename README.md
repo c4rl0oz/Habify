@@ -155,13 +155,6 @@ Para recibir notificaciones en iPhone/iPad, la app debe **instalarse en la panta
 
 ---
 
-## 🗺️ Próximos pasos
-
-- Íconos y logo personalizados.
-- "Modo Reto" (challenge mode).
-- Pulido visual adicional.
-
----
 
 ## 📄 Notas
 
