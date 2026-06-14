@@ -2011,6 +2011,17 @@ function irAPantalla(pantalla) {
 }
 
 function generarEstadisticas() {
+    // Empty state: sin hábitos creados
+    const _empty = document.getElementById('stats-empty');
+    const _contenido = document.getElementById('stats-contenido');
+    if (misHabitos.length === 0) {
+        if (_empty) _empty.classList.remove('hidden');
+        if (_contenido) _contenido.classList.add('hidden');
+        return;
+    }
+    if (_empty) _empty.classList.add('hidden');
+    if (_contenido) _contenido.classList.remove('hidden');
+
     const fechaRef = diaSeleccionadoTira || hoyComoTexto();
     const fecha = new Date(fechaRef + 'T00:00:00');
     const hoyStr = hoyComoTexto();

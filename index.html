@@ -650,6 +650,15 @@
         <!-- PANTALLA DE ESTADÍSTICAS -->
 <section id="pantalla-estadisticas" class="hidden space-y-5">
 
+    <!-- Empty state: sin hábitos -->
+    <div id="stats-empty" class="hidden flex flex-col items-center justify-center text-center py-20 px-8 gap-3">
+        <span class="text-5xl">📊</span>
+        <p class="text-base font-black text-black dark:text-white">Aún no hay estadísticas</p>
+        <p class="text-sm text-slate-400 font-medium max-w-[240px]">Crea tu primer hábito y empieza a completarlo para ver aquí tu progreso.</p>
+    </div>
+
+    <div id="stats-contenido" class="space-y-5">
+
     <!-- Tarjeta de productividad global -->
             <div class="p-5 rounded-[28px] flex justify-between items-center hero-shadow" style="background:#6C63FF;">        <div>
             <p id="stats-label-prod" class="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Productividad hoy</p>
@@ -715,6 +724,7 @@
         <div id="lista-rachas" class="space-y-2"></div>
     </div>
 
+    </div>
 </section>
 
     </main>
