@@ -2322,34 +2322,77 @@ function inicializarScrollResumen() {
 // ============================================================
 // MODO OSCURO
 // ============================================================
+let _mqTemaOscuro = window.matchMedia('(prefers-color-scheme: dark)');
+
+function obtenerTema() {
+    let t = localStorage.getItem('habify_tema');
+    if (!t) {
+        const viejo = localStorage.getItem('habify_modo_oscuro');
+        t = viejo === 'true' ? 'oscuro' : (viejo === 'false' ? 'claro' : 'sistema');
+    }
+    return t;
+}
+
+function aplicarTema(reRender) {
+    const tema = obtenerTema();
+    const oscuro = tema === 'oscuro' || (tema === 'sistema' && _mqTemaOscuro.matches);
+    document.documentElement.classList.toggle('dark', oscuro);
+    actualizarSelectorTema();
+
+    if (reRender) {
+        animarCargaInicial = false;
+        renderizarHabitos();
+        const calendarioVisible = !document.getElementById('pantalla-calendario').classList.contains('hidden');
+        if (calendarioVisible) {
+            generarCalendarioMensual();
+            generarResumenSemanal();
+        }
+    }
+}
+
 function inicializarModoOscuro() {
-    const modoGuardado = localStorage.getItem('habify_modo_oscuro');
-    if (modoGuardado === 'true') {
-        document.documentElement.classList.add('dark');
-    }
+    // El <head> ya aplicó la clase para evitar parpadeo; aquí sincronizamos el selector y escuchamos el sistema.
+    aplicarTema(false);
+    _mqTemaOscuro.addEventListener('change', () => {
+        if (obtenerTema() === 'sistema') aplicarTema(true);
+    });
 }
 
-function toggleModoOscuro() {
-    const html = document.documentElement;
-    const estaOscuro = html.classList.contains('dark');
-    
-    if (estaOscuro) {
-        html.classList.remove('dark');
-        localStorage.setItem('habify_modo_oscuro', 'false');
-    } else {
-        html.classList.add('dark');
-        localStorage.setItem('habify_modo_oscuro', 'true');
-    }
-
-    animarCargaInicial = false;
-    renderizarHabitos();
-
-    const calendarioVisible = !document.getElementById('pantalla-calendario').classList.contains('hidden');
-    if (calendarioVisible) {
-        generarCalendarioMensual();
-        generarResumenSemanal();
-    }
+function setTema(tema) {
+    localStorage.setItem('habify_tema', tema);
+    aplicarTema(true);
+    const panel = document.getElementById('tema-panel');
+    const chevron = document.getElementById('tema-chevron');
+    if (panel) panel.style.maxHeight = '0px';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
 }
+
+function toggleColapsableTema() {
+    const panel = document.getElementById('tema-panel');
+    const chevron = document.getElementById('tema-chevron');
+    if (!panel) return;
+    const abierto = panel.style.maxHeight && panel.style.maxHeight !== '0px';
+    panel.style.maxHeight = abierto ? '0px' : panel.scrollHeight + 'px';
+    if (chevron) chevron.style.transform = abierto ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function actualizarSelectorTema() {
+    const activo = obtenerTema();
+    const etiquetas = { claro: 'Claro', oscuro: 'Oscuro', sistema: 'Sistema' };
+    const valor = document.getElementById('tema-valor');
+    if (valor) valor.textContent = etiquetas[activo] || 'Sistema';
+
+    const esDark = document.documentElement.classList.contains('dark');
+    document.querySelectorAll('.tema-opt').forEach(btn => {
+        const sel = btn.dataset.tema === activo;
+        btn.style.background = sel ? 'rgba(108,99,255,0.12)' : 'transparent';
+        btn.style.color = sel ? '#6C63FF' : (esDark ? 'rgba(255,255,255,0.65)' : '#475569');
+        const check = btn.querySelector('.tema-check');
+        if (check) check.style.visibility = sel ? 'visible' : 'hidden';
+    });
+}
+
+
 const catActiva = document.querySelector('.cat-emoji-btn');
 if (catActiva && !document.getElementById('pantalla-crear-habito').classList.contains('hidden')) {
     mostrarCategoriaEmoji('deporte', catActiva);
