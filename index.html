@@ -181,6 +181,20 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6C63FF">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('habify_tema');
+          if (!t) {
+            var viejo = localStorage.getItem('habify_modo_oscuro');
+            t = viejo === 'true' ? 'oscuro' : (viejo === 'false' ? 'claro' : 'sistema');
+          }
+          var oscuro = t === 'oscuro' ||
+            (t === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (oscuro) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-title" content="Habify">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -196,10 +210,9 @@
 <body class="bg-white dark:bg-black text-slate-900 dark:text-white font-sans antialiased flex flex-col h-screen overflow-hidden select-none">
 
 <!-- SPLASH SCREEN -->
-<div id="pantalla-splash" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black transition-opacity duration-500" style="opacity:1;">
-    <div class="flex flex-col items-center gap-3">
-        <p class="text-4xl font-black" style="color:#6C63FF; letter-spacing:-0.5px;">Habify</p>
-    </div>
+<div id="pantalla-splash" class="fixed inset-0 z-[9999] bg-white dark:bg-black transition-opacity duration-500" style="opacity:1;">
+    <img src="splash-light.png" alt="Habify" class="w-full h-full object-contain dark:hidden">
+    <img src="splash-dark.png" alt="Habify" class="w-full h-full object-contain hidden dark:block">
 </div>
 
 <!-- PANTALLA DE BIENVENIDA / REGISTRO -->
