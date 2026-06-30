@@ -815,20 +815,23 @@ function sufijoSemanas(habito) {
     return ` · ${a.semanas} sem`;
 }
 
+// ¿El hábito está programado para esta fecha? (ya existía + aplica ese día de la semana)
+// Fuente única de verdad para el filtrado por días activos.
+function habitoActivoEnFecha(habito, fechaStr) {
+    const creado = (habito.fechaCreacion || '').slice(0, 10);
+    if (creado && creado > fechaStr) return false;                        // aún no existía
+    if (!habito.diasSemana || habito.diasSemana.length === 0) return true; // sin días fijos → todos los días
+    const dow = new Date(fechaStr + 'T00:00:00').getDay();
+    return habito.diasSemana.includes(dow);                               // días concretos
+}
+
 // ¿Este hábito cuenta para las estadísticas de un día concreto?
 function aplicaEnDia(habito, fechaStr) {
-    // No cuenta antes de existir
-    if (habito.fechaCreacion && habito.fechaCreacion.slice(0, 10) > fechaStr) return false;
+    // Estructura: ya existe y aplica este día de la semana
+    if (!habitoActivoEnFecha(habito, fechaStr)) return false;
 
-    const tipo = tipoRacha(habito);
-
-    if (tipo === 'dias_fijos') {
-        const dow = new Date(fechaStr + 'T00:00:00').getDay();
-        return habito.diasSemana.includes(dow);
-    }
-
-    if (tipo === 'semanal') {
-        // Opción 1: pendiente cada día hasta cumplir la meta de esa semana
+    // Meta semanal flexible: sigue pendiente cada día hasta cumplir la meta de esa semana
+    if (tipoRacha(habito) === 'semanal') {
         const meta = habito.metaSemanal;
         const f = new Date(fechaStr + 'T00:00:00');
         const lunes = lunesDeLaSemana(f);
@@ -840,7 +843,7 @@ function aplicaEnDia(habito, fechaStr) {
         return hechosAntes < meta;
     }
 
-    // diario
+    // días fijos o diario → cuenta si está activo
     return true;
 }
 
@@ -1435,11 +1438,7 @@ function renderizarHabitos() {
     const diaReferencia = new Date(fechaReferencia + 'T00:00:00').getDay();
 
     const habitosOrdenados = [...misHabitos]
-        .filter(h => {
-            if (h.fechaCreacion > fechaReferencia) return false;
-            if (!h.diasSemana || h.diasSemana.length === 0) return true;
-            return h.diasSemana.includes(diaReferencia);
-        })
+        .filter(h => habitoActivoEnFecha(h, fechaReferencia))
         .sort((a, b) => {
             const aPin = a.pinneado ? 0 : 1;
             const bPin = b.pinneado ? 0 : 1;
@@ -2651,12 +2650,7 @@ function mostrarResumenDiaTira(fechaStr) {
     const completados = misHabitos.filter(h =>
         h.registros && h.registros.includes(fechaStr)
     );
-    const diaStr = new Date(fechaStr + 'T00:00:00').getDay();
-    const total = misHabitos.filter(h => {
-        if (h.fechaCreacion > fechaStr) return false;
-        if (!h.diasSemana || h.diasSemana.length === 0) return true;
-        return h.diasSemana.includes(diaStr);
-    }).length;
+    const total = misHabitos.filter(h => habitoActivoEnFecha(h, fechaStr)).length;
 
     // Actualizamos el resumen de hoy
     const textoResumen = document.getElementById('texto-resumen-hoy');
@@ -3796,16 +3790,20 @@ const LOGROS = [
         check: () => {
             if (misHabitos.length === 0) return false;
             const hoy = new Date();
+            let huboDiaConHabitos = false;
             for (let i = 0; i < 7; i++) {
                 const d = new Date(hoy);
                 d.setDate(hoy.getDate() - i);
                 const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
-                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
-                if (habitosDelDia.length === 0) return false;
+                const existian = misHabitos.filter(h => (h.fechaCreacion || '').slice(0, 10) <= fecha);
+                if (existian.length === 0) return false;               // no tenías hábitos ese día → aún no hay semana perfecta
+                const habitosDelDia = existian.filter(h => habitoActivoEnFecha(h, fecha));
+                if (habitosDelDia.length === 0) continue;              // existían pero ninguno tocaba ese día → no rompe
+                huboDiaConHabitos = true;
                 const todosCompletados = habitosDelDia.every(h => h.registros.includes(fecha));
                 if (!todosCompletados) return false;
             }
-            return true;
+            return huboDiaConHabitos;
         }
     },
     {
@@ -3821,8 +3819,10 @@ const LOGROS = [
                 const d = new Date(hoy);
                 d.setDate(hoy.getDate() - i);
                 const fecha = fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate());
-                const habitosDelDia = misHabitos.filter(h => h.fechaCreacion <= fecha);
-                if (habitosDelDia.length === 0) continue;
+                const existian = misHabitos.filter(h => (h.fechaCreacion || '').slice(0, 10) <= fecha);
+                if (existian.length === 0) continue;                   // antes de tener hábitos → no cuenta para los 30 días
+                const habitosDelDia = existian.filter(h => habitoActivoEnFecha(h, fecha));
+                if (habitosDelDia.length === 0) { diasCumplidos++; continue; } // existían pero ninguno tocaba → día cumplido
                 const completados = habitosDelDia.filter(h => h.registros.includes(fecha)).length;
                 if (completados / habitosDelDia.length >= 0.8) diasCumplidos++;
             }
