@@ -138,11 +138,10 @@ async function eliminarHabitoSupabase(habitoId) {
 // REGISTROS DIARIOS
 // ============================================================
 
-async function obtenerRegistrosSupabase(usuarioId) {
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioId}&select=*`,
-        { headers }
-    );
+async function obtenerRegistrosSupabase(usuarioId, desde = null) {
+    let url = `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioId}&select=*`;
+    if (desde) url += `&fecha=gte.${desde}`;
+    const res = await fetch(url, { headers });
     return await res.json();
 }
 

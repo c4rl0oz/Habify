@@ -1059,51 +1059,67 @@ async function verificarSesion() {
     }
 }
 
+let _habitosDBCache = [];
+let historialCompletoCargado = false;
+
+function fechaHaceMeses(n) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - n);
+    return d.toISOString().slice(0, 10);
+}
+
+function mapearHabitos(habitosDB, registrosDB) {
+    return habitosDB.map(h => ({
+        id: h.id,
+        nombre: h.nombre,
+        emoji: h.emoji,
+        color: h.color || '#6C63FF',
+        metaSemanal: h.meta_semanal,
+        fechaCreacion: h.fecha_creacion,
+        recordatorio: h.recordatorio || null,
+        orden: h.orden ?? 0,
+        tipo: h.tipo || 'check',
+        unidad: h.unidad || null,
+        metaCantidad: h.meta_cantidad || null,
+        pinneado: h.pinneado || false,
+        registros: registrosDB
+            .filter(r => r.habito_id === h.id && (h.tipo !== 'contador' || r.cantidad >= (h.meta_cantidad || 1)))
+            .map(r => r.fecha),
+        cantidades: registrosDB
+            .filter(r => r.habito_id === h.id && r.cantidad != null)
+            .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {}),
+        horas: Object.fromEntries(
+            registrosDB
+                .filter(r => r.habito_id === h.id && r.hora)
+                .map(r => [r.fecha, r.hora])
+        ),
+        fotos: Object.fromEntries(
+            registrosDB
+                .filter(r => r.habito_id === h.id && r.foto_url)
+                .map(r => [r.fecha, r.foto_url])
+        ),
+        _registroIdMap: Object.fromEntries(
+            registrosDB
+                .filter(r => r.habito_id === h.id)
+                .map(r => [r.fecha, r.id])
+        ),
+        diasSemana: h.dias_semana
+            ? h.dias_semana.split(',').map(Number)
+            : []
+    }));
+}
+
 async function cargarDatosUsuario() {
     if (!usuarioActual) return;
 
     try {
         const habitosDB = await obtenerHabitosSupabase(usuarioActual.id);
-        const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
+        _habitosDBCache = habitosDB;
+        historialCompletoCargado = false;
 
-        misHabitos = habitosDB.map(h => ({
-            id: h.id,
-            nombre: h.nombre,
-            emoji: h.emoji,
-            color: h.color || '#6C63FF',
-            metaSemanal: h.meta_semanal,
-            fechaCreacion: h.fecha_creacion,
-            recordatorio: h.recordatorio || null,
-            orden: h.orden ?? 0,
-            tipo: h.tipo || 'check',
-            unidad: h.unidad || null,
-            metaCantidad: h.meta_cantidad || null,
-            pinneado: h.pinneado || false,
-            registros: registrosDB
-                .filter(r => r.habito_id === h.id && (h.tipo !== 'contador' || r.cantidad >= (h.meta_cantidad || 1)))
-                .map(r => r.fecha),
-            cantidades: registrosDB
-                .filter(r => r.habito_id === h.id && r.cantidad != null)
-                .reduce((acc, r) => { acc[r.fecha] = r.cantidad; return acc; }, {}),
-            horas: Object.fromEntries(
-                registrosDB
-                    .filter(r => r.habito_id === h.id && r.hora)
-                    .map(r => [r.fecha, r.hora])
-            ),
-            fotos: Object.fromEntries(
-                registrosDB
-                    .filter(r => r.habito_id === h.id && r.foto_url)
-                    .map(r => [r.fecha, r.foto_url])
-            ),
-            _registroIdMap: Object.fromEntries(
-                registrosDB
-                    .filter(r => r.habito_id === h.id)
-                    .map(r => [r.fecha, r.id])
-            ),
-            diasSemana: h.dias_semana
-                ? h.dias_semana.split(',').map(Number)
-                : []
-        }));
+        // Carga inicial: solo últimos 6 meses para un arranque rápido
+        const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id, fechaHaceMeses(6));
+        misHabitos = mapearHabitos(habitosDB, registrosDB);
 
         await cargarTodasLasNotas();
         renderizarHabitos();
@@ -1113,8 +1129,32 @@ async function cargarDatosUsuario() {
         verificarNuevosLogros();
         ocultarSplash();
         mostrarTutorialSiEsNecesario();
+
+        // Historial completo en segundo plano (no bloquea el arranque)
+        cargarHistorialCompleto();
     } catch (e) {
         mostrarError('Revisa tu conexión.');
+    }
+}
+
+async function cargarHistorialCompleto() {
+    if (historialCompletoCargado || !usuarioActual) return;
+    try {
+        const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
+        misHabitos = mapearHabitos(_habitosDBCache, registrosDB);
+        historialCompletoCargado = true;
+
+        // Refrescar lo visible ya con el historial completo
+        animarCargaInicial = false;
+        renderizarHabitos();
+        actualizarResumenHoy();
+        const calendarioVisible = !document.getElementById('pantalla-calendario').classList.contains('hidden');
+        if (calendarioVisible) {
+            generarCalendarioMensual();
+            generarResumenSemanal();
+        }
+    } catch (e) {
+        // Si falla, la app sigue funcionando con los últimos 6 meses
     }
 }
 
