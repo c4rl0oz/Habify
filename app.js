@@ -1055,8 +1055,18 @@ async function verificarSesion() {
         await cargarDatosUsuario();
         document.getElementById('pantalla-auth').classList.add('hidden');
     } catch (e) {
+        const respaldo = cargarRespaldoLocal();
+        if (respaldo && respaldo.length > 0) {
+            misHabitos = respaldo;
+            renderizarHabitos();
+            actualizarResumenHoy();
+            inicializarTiraDias();
+            document.getElementById('pantalla-auth').classList.add('hidden');
+            mostrarError('Sin conexión · mostrando tus últimos datos guardados');
+        } else {
+            mostrarError('Sin conexión. Revisa tu internet e intenta de nuevo.');
+        }
         ocultarSplash();
-        mostrarError('Sin conexión. Revisa tu internet e intenta de nuevo.');
     } finally {
         mostrarCargando(false);
     }
@@ -1123,6 +1133,7 @@ async function cargarDatosUsuario() {
         // Carga inicial: solo últimos 6 meses para un arranque rápido
         const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id, fechaHaceMeses(6));
         misHabitos = mapearHabitos(habitosDB, registrosDB);
+        guardarRespaldoLocal();
 
         await cargarTodasLasNotas();
         renderizarHabitos();
@@ -1140,12 +1151,31 @@ async function cargarDatosUsuario() {
     }
 }
 
+function guardarRespaldoLocal() {
+    try {
+        localStorage.setItem('habify_respaldo_habitos', JSON.stringify(misHabitos));
+        localStorage.setItem('habify_respaldo_fecha', new Date().toISOString());
+    } catch (e) {
+        // Si falla (ej. cuota llena), no es crítico: solo se pierde el respaldo offline
+    }
+}
+
+function cargarRespaldoLocal() {
+    try {
+        const raw = localStorage.getItem('habify_respaldo_habitos');
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 async function cargarHistorialCompleto() {
     if (historialCompletoCargado || !usuarioActual) return;
     try {
         const registrosDB = await obtenerRegistrosSupabase(usuarioActual.id);
         misHabitos = mapearHabitos(_habitosDBCache, registrosDB);
         historialCompletoCargado = true;
+        guardarRespaldoLocal();
 
         // Refrescar lo visible ya con el historial completo
         animarCargaInicial = false;
