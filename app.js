@@ -1401,43 +1401,9 @@ function inicializarApp() {
 // ============================================================
 // RENDERIZAR WIDGETS
 // ============================================================
-function renderizarHabitos() {
-    const contenedor = document.getElementById('contenedor-widgets');
-    if (!contenedor) return;
-
-    contenedor.innerHTML = "";
-    contenedor.className = "space-y-3";
-
-    if (misHabitos.length === 0) {
-        contenedor.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-16 text-center gap-4">
-                <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
-                    <span class="text-4xl">🌱</span>
-                </div>
-                <div class="space-y-1">
-                    <p class="text-base font-black text-black dark:text-white">¡Empieza tu primer hábito!</p>
-                    <p class="text-xs text-slate-400 font-medium leading-relaxed">
-                        Los grandes cambios comienzan<br>con un pequeño paso diario.
-                    </p>
-                </div>
-                <button onclick="abrirModal()" 
-                        class="text-white font-bold text-sm px-6 py-3 rounded-2xl active:scale-95 transition-all shadow-md"
-                        style="background:#6C63FF">
-                    Crear mi primer hábito →
-                </button>
-            </div>
-        `;
-        actualizarResumenHoy();
-        return;
-    }
-
-    const fechaReferencia = diaSeleccionadoTira || hoyComoTexto();
-    const esHoyReferencia = fechaReferencia === hoyComoTexto();
-
-    // Ordenar: pinneados → no completados → completados (dentro de cada grupo, orden de creación)
-    const diaReferencia = new Date(fechaReferencia + 'T00:00:00').getDay();
-
-    const habitosOrdenados = [...misHabitos]
+// Filtra los hábitos activos en la fecha y los ordena: pinneados → pendientes → completados
+function aplicarFiltrosDia(fechaReferencia) {
+    return [...misHabitos]
         .filter(h => habitoActivoEnFecha(h, fechaReferencia))
         .sort((a, b) => {
             const aPin = a.pinneado ? 0 : 1;
@@ -1450,22 +1416,22 @@ function renderizarHabitos() {
 
             return new Date(b.fechaCreacion) - new Date(a.fechaCreacion);
         });
+}
 
-    habitosOrdenados.forEach(habito => {
+// Devuelve el HTML de una sola tarjeta de hábito
+function generarTarjetaHabito(habito, fechaReferencia) {
+    const completados = completadosEstaSemana(habito);
+    const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
+    const yaHecho = habito.registros.includes(fechaReferencia);
+    const racha = calcularRacha(habito);
+    const enRiesgo = rachaEnRiesgo(habito);
+    const color = habito.color || '#6C63FF';
 
-        const completados = completadosEstaSemana(habito);
-        const porcentaje = Math.min(Math.round((completados / habito.metaSemanal) * 100), 100);
-        const yaHecho = habito.registros.includes(fechaReferencia);
-        const racha = calcularRacha(habito);
-        const enRiesgo = rachaEnRiesgo(habito);
-        const color = habito.color || '#6C63FF';
+    const esDark = document.documentElement.classList.contains('dark');
+    const colorFondo = yaHecho ? color + '22' : (esDark ? '#0f0f0f' : '#f1f5f9');
+    const borderColor = yaHecho ? color + '50' : (esDark ? 'rgba(255,255,255,0.10)' : '#e2e8f0');
 
-        const esDark = document.documentElement.classList.contains('dark');
-        const colorFondo = yaHecho ? color + '22' : (esDark ? '#0f0f0f' : '#f1f5f9');
-        const borderColor = yaHecho ? color + '50' : (esDark ? 'rgba(255,255,255,0.10)' : '#e2e8f0');
-        
-
-        const tarjetaHTML = `
+    return `
     <div class="habito-card rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-grab active:cursor-grabbing"
         data-id="${habito.id}"
         style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow:${yaHecho ? `0 6px 24px ${color}40, 0 2px 8px ${color}20` : '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)'};"
@@ -1511,8 +1477,16 @@ function renderizarHabitos() {
         </div>
     </div>
 `;
-       contenedor.innerHTML += tarjetaHTML;
-    });
+}
+
+// Pinta la lista de tarjetas en el contenedor y aplica drag&drop + animación
+function renderizarLista(habitosOrdenados, fechaReferencia) {
+    const contenedor = document.getElementById('contenedor-widgets');
+    if (!contenedor) return;
+
+    contenedor.innerHTML = habitosOrdenados
+        .map(habito => generarTarjetaHabito(habito, fechaReferencia))
+        .join('');
 
     // Activar drag & drop
     activarDragAndDrop();
@@ -1532,6 +1506,42 @@ function renderizarHabitos() {
         });
         animarCargaInicial = false;
     }
+}
+
+// Orquestador: estado vacío o filtrar → pintar lista
+function renderizarHabitos() {
+    const contenedor = document.getElementById('contenedor-widgets');
+    if (!contenedor) return;
+
+    contenedor.innerHTML = "";
+    contenedor.className = "space-y-3";
+
+    if (misHabitos.length === 0) {
+        contenedor.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 text-center gap-4">
+                <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
+                    <span class="text-4xl">🌱</span>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-base font-black text-black dark:text-white">¡Empieza tu primer hábito!</p>
+                    <p class="text-xs text-slate-400 font-medium leading-relaxed">
+                        Los grandes cambios comienzan<br>con un pequeño paso diario.
+                    </p>
+                </div>
+                <button onclick="abrirModal()" 
+                        class="text-white font-bold text-sm px-6 py-3 rounded-2xl active:scale-95 transition-all shadow-md"
+                        style="background:#6C63FF">
+                    Crear mi primer hábito →
+                </button>
+            </div>
+        `;
+        actualizarResumenHoy();
+        return;
+    }
+
+    const fechaReferencia = diaSeleccionadoTira || hoyComoTexto();
+    const habitosOrdenados = aplicarFiltrosDia(fechaReferencia);
+    renderizarLista(habitosOrdenados, fechaReferencia);
 }
 async function ajustarContadorDetalle(delta) {
     if (!habitoDetalleActual) return;
