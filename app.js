@@ -1444,6 +1444,10 @@ function aplicarFiltrosDia(fechaReferencia) {
             const bHecho = b.registros.includes(fechaReferencia) ? 1 : 0;
             if (aHecho !== bHecho) return aHecho - bHecho;
 
+            // Respeta el orden manual del drag&drop; si empata, cae a fecha de creación
+            const ordenDiff = (a.orden ?? 0) - (b.orden ?? 0);
+            if (ordenDiff !== 0) return ordenDiff;
+
             return new Date(b.fechaCreacion) - new Date(a.fechaCreacion);
         });
 }
