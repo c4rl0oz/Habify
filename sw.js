@@ -12,13 +12,17 @@ const APP_SHELL = [
     './splash-dark.png',
     './icons/icon-180.png',
     './icons/icon-192.png',
-    './icons/icon-512.png'
+    './icons/icon-512.png',
+    'https://cdn.tailwindcss.com',
+    'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
 self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE_VERSION)
-            .then(cache => cache.addAll(APP_SHELL))
+            .then(cache => Promise.allSettled(
+                APP_SHELL.map(url => cache.add(url))
+            ))
             .then(() => self.skipWaiting())
     );
 });
