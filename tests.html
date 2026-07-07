@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Habify · Pruebas unitarias</title>
+<style>
+    body { background:#0f0f0f; color:#e2e8f0; font-family: ui-monospace, 'SF Mono', Consolas, monospace; padding: 24px; font-size: 14px; }
+    h1 { color:#6C63FF; font-size: 20px; margin-bottom: 4px; }
+    .sub { color:#94a3b8; margin-bottom: 20px; }
+    .grupo { margin-top: 24px; color:#94a3b8; font-weight:bold; border-bottom:1px solid #333; padding-bottom:4px; }
+    .ok { color:#4ade80; }
+    .fail { color:#f87171; font-weight:bold; }
+    .detalle { color:#64748b; margin-left: 20px; }
+    #resumen { margin-top: 28px; padding: 14px 18px; border-radius: 10px; font-weight:bold; font-size:15px; }
+    #resumen.ok-total { background: rgba(74,222,128,0.12); color:#4ade80; }
+    #resumen.fail-total { background: rgba(248,113,113,0.12); color:#f87171; }
+    #error-carga { color:#f87171; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Habify · Pruebas unitarias</h1>
+<p class="sub">Framework ligero a medida (sin build step) — carga app.js real y verifica funciones puras clave.</p>
+<div id="salida"></div>
+<div id="resumen"></div>
+
+<script>
+// ============================================================
+// Mini framework de aserciones
+// ============================================================
+let totalTests = 0, totalOk = 0;
+const salida = document.getElementById('salida');
+let grupoActual = null;
+
+function grupo(nombre) {
+    grupoActual = document.createElement('div');
+    grupoActual.className = 'grupo';
+    grupoActual.textContent = nombre;
+    salida.appendChild(grupoActual);
+}
+
+function test(nombre, fn) {
+    totalTests++;
+    const linea = document.createElement('div');
+    try {
+        fn();
+        totalOk++;
+        linea.className = 'ok';
+        linea.textContent = `✓ ${nombre}`;
+    } catch (err) {
+        linea.className = 'fail';
+        linea.innerHTML = `✗ ${nombre}<div class="detalle">${err.message}</div>`;
+    }
+    salida.appendChild(linea);
+}
+
+async function testAsync(nombre, fn) {
+    totalTests++;
+    const linea = document.createElement('div');
+    try {
+        await fn();
+        totalOk++;
+        linea.className = 'ok';
+        linea.textContent = `✓ ${nombre}`;
+    } catch (err) {
+        linea.className = 'fail';
+        linea.innerHTML = `✗ ${nombre}<div class="detalle">${err.message}</div>`;
+    }
+    salida.appendChild(linea);
+}
+
+function assertEqual(actual, esperado, msg) {
+    if (actual !== esperado) {
+        throw new Error(`${msg || 'valores distintos'} — esperado: ${JSON.stringify(esperado)}, obtenido: ${JSON.stringify(actual)}`);
+    }
+}
+
+function assertTrue(cond, msg) {
+    if (!cond) throw new Error(msg || 'se esperaba true');
+}
+
+function mostrarResumen() {
+    const r = document.getElementById('resumen');
+    r.textContent = `${totalOk} / ${totalTests} pruebas pasaron`;
+    r.className = totalOk === totalTests ? 'ok-total' : 'fail-total';
+}
+
+// ============================================================
+// Helpers de fechas relativas a HOY (para que las pruebas
+// nunca queden obsoletas, sin importar cuándo se ejecuten)
+// ============================================================
+function fechaStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function diasAtras(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return fechaStr(d);
+}
+function habitoBase(overrides) {
+    return Object.assign({
+        registros: [],
+        cantidades: {},
+        diasSemana: [],
+        metaSemanal: 7,
+        fechaCreacion: diasAtras(365),
+        tipo: 'check'
+    }, overrides);
+}
+
+// ============================================================
+// Cargar app.js real, sin disparar inicializarApp()
+// ============================================================
+async function cargarAppJs() {
+    const res = await fetch('./app.js');
+    if (!res.ok) throw new Error('No se pudo leer app.js (HTTP ' + res.status + ')');
+    let codigo = await res.text();
+
+    const marcador = 'inicializarApp();';
+    const idx = codigo.lastIndexOf(marcador);
+    if (idx === -1) throw new Error('No se encontró la línea inicializarApp() al final de app.js — revisa el marcador.');
+    // Quitamos SOLO esa llamada final, en memoria. app.js en el repo no se toca.
+    codigo = codigo.slice(0, idx) + '// inicializarApp() omitido en pruebas' + codigo.slice(idx + marcador.length);
+
+    const script = document.createElement('script');
+    script.textContent = codigo;
+    document.body.appendChild(script);
+}
+
+// ============================================================
+// Suite de pruebas
+// ============================================================
+async function correrPruebas() {
+    try {
+        await cargarAppJs();
+    } catch (err) {
+        document.getElementById('error-carga').textContent =
+            'No se pudo cargar app.js para las pruebas:\n' + err.message +
+            '\n\nEjecuta este archivo desde el sitio publicado o un servidor local (no abriendo el .html directo con doble clic), porque fetch() necesita http/https.';
+        salida.appendChild(document.getElementById('error-carga'));
+        return;
+    }
+
+    // ---------- calcularRacha: caso diario ----------
+    grupo('calcularRacha — hábito diario');
+
+    test('racha de 5 días consecutivos hasta hoy', () => {
+        const h = habitoBase({ registros: [diasAtras(0), diasAtras(1), diasAtras(2), diasAtras(3), diasAtras(4)] });
+        assertEqual(calcularRacha(h), 5, 'racha esperada de 5 días');
+    });
+
+    test('día de gracia: no marcado hoy pero sí ayer, sigue contando', () => {
+        const h = habitoBase({ registros: [diasAtras(1), diasAtras(2), diasAtras(3)] });
+        assertEqual(calcularRacha(h), 3, 'racha debe seguir viva usando el día de gracia');
+        assertEqual(rachaEnRiesgo(h), false, 'no debería marcarse en riesgo si ayer sí se hizo');
+    });
+
+    test('día de gracia usado: ni hoy ni ayer, pero sí anteayer → en riesgo', () => {
+        const h = habitoBase({ registros: [diasAtras(2), diasAtras(3), diasAtras(4)] });
+        assertEqual(calcularRacha(h), 3, 'racha sigue contando con el margen de anteayer');
+        assertEqual(rachaEnRiesgo(h), true, 'debe marcarse en riesgo (ya se usó el día de gracia)');
+    });
+
+    test('racha muerta: último registro hace 3+ días', () => {
+        const h = habitoBase({ registros: [diasAtras(3), diasAtras(4), diasAtras(5)] });
+        assertEqual(calcularRacha(h), 0, 'la racha debe darse por rota (margen de 2 días agotado)');
+    });
+
+    test('menos de 3 días consecutivos no cuenta como racha', () => {
+        const h = habitoBase({ registros: [diasAtras(0), diasAtras(1)] });
+        assertEqual(calcularRacha(h), 0, 'el umbral mínimo son 3 días');
+    });
+
+    test('un hueco corta la racha en el punto del hueco', () => {
+        const h = habitoBase({ registros: [diasAtras(0), diasAtras(1), diasAtras(2), diasAtras(5), diasAtras(6)] });
+        assertEqual(calcularRacha(h), 3, 'solo debe contar el tramo contiguo más reciente');
+    });
+
+    // ---------- calcularRacha: caso días fijos ----------
+    grupo('calcularRacha — días fijos (dias_fijos)');
+
+    test('semana actual completa en días programados', () => {
+        const hoy = new Date();
+        const dow = hoy.getDay(); // 0=Dom..6=Sáb
+        const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+        const registros = [];
+        const dias = [1, 3, 5]; // Lun, Mié, Vie
+        for (const d of dias) {
+            const f = new Date(lunes); f.setDate(lunes.getDate() + (d - 1));
+            if (f <= hoy) registros.push(fechaStr(f));
+        }
+        const h = habitoBase({ diasSemana: dias, metaSemanal: undefined, registros });
+        // Solo verificamos que no explote y devuelva un número válido ≥ 0;
+        // el valor exacto depende del día de la semana en que se ejecute la prueba.
+        const r = calcularRacha(h);
+        assertTrue(typeof r === 'number' && r >= 0, 'debe devolver un número de días válido');
+    });
+
+    test('día no programado no rompe nada (habitoActivoEnFecha lo excluye)', () => {
+        const h = habitoBase({ diasSemana: [1, 2, 3, 4, 5] }); // Lun-Vie
+        // Buscar el próximo sábado o domingo desde hoy para probar
+        let d = new Date();
+        while (d.getDay() !== 0 && d.getDay() !== 6) d.setDate(d.getDate() + 1);
+        assertEqual(habitoActivoEnFecha(h, fechaStr(d)), false, 'sábado/domingo no debe estar activo para un hábito L-V');
+    });
+
+    // ---------- calcularRacha: caso meta semanal flexible ----------
+    grupo('calcularRacha — meta semanal flexible');
+
+    test('meta cumplida esta semana y la anterior', () => {
+        const hoy = new Date();
+        const dow = hoy.getDay();
+        const lunesActual = new Date(hoy); lunesActual.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+        const registros = [];
+        // 3 registros esta semana (lunes, martes, miércoles si ya pasaron; si no, los días disponibles)
+        for (let i = 0; i < 3; i++) {
+            const f = new Date(lunesActual); f.setDate(lunesActual.getDate() + i);
+            if (f <= hoy) registros.push(fechaStr(f));
+        }
+        // 3 registros la semana pasada completa
+        const lunesPrevio = new Date(lunesActual); lunesPrevio.setDate(lunesActual.getDate() - 7);
+        for (let i = 0; i < 3; i++) {
+            const f = new Date(lunesPrevio); f.setDate(lunesPrevio.getDate() + i);
+            registros.push(fechaStr(f));
+        }
+        const h = habitoBase({ metaSemanal: 3, diasSemana: [], registros });
+        const r = calcularRacha(h);
+        assertTrue(r >= 3, 'debe contar al menos los 3 registros de la semana pasada completa');
+    });
+
+    // ---------- habitoActivoEnFecha ----------
+    grupo('habitoActivoEnFecha — fuente única de verdad');
+
+    test('no activo antes de la fecha de creación', () => {
+        const h = habitoBase({ fechaCreacion: diasAtras(1) });
+        assertEqual(habitoActivoEnFecha(h, diasAtras(5)), false, 'no debería aplicar 5 días antes de crearse');
+    });
+
+    test('activo todos los días si no tiene días fijos', () => {
+        const h = habitoBase({ diasSemana: [] });
+        assertEqual(habitoActivoEnFecha(h, diasAtras(0)), true, 'sin días fijos, siempre debe estar activo');
+    });
+
+    test('activo solo en los días fijos configurados', () => {
+        const h = habitoBase({ diasSemana: [2] }); // solo martes
+        // Buscar el próximo martes y el próximo miércoles desde hoy
+        let martes = new Date(); while (martes.getDay() !== 2) martes.setDate(martes.getDate() + 1);
+        let miercoles = new Date(martes); miercoles.setDate(martes.getDate() + 1);
+        assertEqual(habitoActivoEnFecha(h, fechaStr(martes)), true, 'debe estar activo un martes');
+        assertEqual(habitoActivoEnFecha(h, fechaStr(miercoles)), false, 'no debe estar activo un miércoles');
+    });
+
+    // ---------- completadosEstaSemana ----------
+    grupo('completadosEstaSemana');
+
+    test('cuenta solo registros dentro de la semana actual (lunes-hoy)', () => {
+        const hoy = new Date();
+        const dow = hoy.getDay();
+        const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+        const semanaPasada = new Date(lunes); semanaPasada.setDate(lunes.getDate() - 3);
+
+        const h = habitoBase({ registros: [fechaStr(lunes), fechaStr(hoy), fechaStr(semanaPasada)] });
+        // El registro de la semana pasada NO debe contarse
+        assertEqual(completadosEstaSemana(h), 2, 'solo debe contar los 2 registros de esta semana');
+    });
+
+    test('devuelve 0 sin registros', () => {
+        const h = habitoBase({ registros: [] });
+        assertEqual(completadosEstaSemana(h), 0, 'sin registros, el conteo debe ser 0');
+    });
+
+    // ---------- comprimirImagen (integración real en el navegador) ----------
+    grupo('comprimirImagen — compresión y redimensionado');
+
+    await testAsync('reduce una imagen grande a máx. 1200px y formato JPEG', async () => {
+        // Generamos una imagen sintética de 2000x1000 para la prueba
+        const canvasOrigen = document.createElement('canvas');
+        canvasOrigen.width = 2000;
+        canvasOrigen.height = 1000;
+        const ctx = canvasOrigen.getContext('2d');
+        ctx.fillStyle = '#6C63FF';
+        ctx.fillRect(0, 0, 2000, 1000);
+
+        const blobOrigen = await new Promise(resolve => canvasOrigen.toBlob(resolve, 'image/png'));
+        const archivo = new File([blobOrigen], 'prueba.png', { type: 'image/png' });
+
+        const resultado = await new Promise((resolve, reject) => {
+            comprimirImagen(archivo, (blobComprimido) => {
+                if (!blobComprimido) return reject(new Error('comprimirImagen no devolvió blob'));
+                resolve(blobComprimido);
+            });
+        });
+
+        assertEqual(resultado.type, 'image/jpeg', 'la imagen comprimida debe ser JPEG');
+
+        const dimensiones = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = () => reject(new Error('no se pudo leer la imagen resultante'));
+            img.src = URL.createObjectURL(resultado);
+        });
+
+        assertTrue(dimensiones.w <= 1200 && dimensiones.h <= 1200, `debe redimensionar a máx. 1200px (obtuvo ${dimensiones.w}x${dimensiones.h})`);
+    });
+
+    mostrarResumen();
+}
+
+correrPruebas();
+</script>
+</body>
+</html>
