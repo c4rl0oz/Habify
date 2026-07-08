@@ -6,7 +6,6 @@ let graficaSemanal = null;
 let graficaMensual = null;
 let diaSeleccionadoTira = hoyComoTexto();
 let animarCargaInicial = true;
-let notasCacheadas = {};
 
 // ============================================================
 // FEEDBACK: SONIDO + VISUAL
@@ -511,12 +510,12 @@ async function guardarCambiosPerfil() {
     }
 
     const campos = { nombre };
-    if (passNueva) campos.password = passNueva;
+    if (passNueva) campos.password = await hashPassword(passNueva);
 
     const ok = await actualizarUsuario(usuarioActual.id, campos);
     if (ok) {
         usuarioActual.nombre = nombre;
-        if (passNueva) usuarioActual.password = passNueva;
+        if (passNueva) usuarioActual.password = campos.password;
         actualizarUIUsuario(usuarioActual);
         abrirPerfil();
         exitoEl.textContent = '¡Cambios guardados!';
@@ -594,6 +593,7 @@ async function enviarRecuperacion() {
         const palabra = palabras[Math.floor(Math.random() * palabras.length)];
         const numero = Math.floor(Math.random() * 900) + 100;
         const tempPass = `${palabra}${numero}`;
+        const tempPassHash = await hashPassword(tempPass);
         const res = await fetch(
             `${SUPABASE_URL}/rest/v1/usuarios?correo=eq.${encodeURIComponent(correo)}`,
             {
@@ -604,7 +604,7 @@ async function enviarRecuperacion() {
                     'Content-Type': 'application/json',
                     'Prefer': 'return=minimal'
                 },
-                body: JSON.stringify({ password: tempPass })
+                body: JSON.stringify({ password: tempPassHash })
             }
         );
         if (res.ok) {
@@ -1057,7 +1057,12 @@ async function verificarSesion() {
     } catch (e) {
         const respaldo = cargarRespaldoLocal();
         if (respaldo && respaldo.length > 0) {
+            try {
+                const raw = localStorage.getItem('habify_respaldo_usuario');
+                if (raw) usuarioActual = JSON.parse(raw);
+            } catch (_) {}
             misHabitos = respaldo;
+            if (usuarioActual) actualizarUIUsuario(usuarioActual);
             renderizarHabitos();
             actualizarResumenHoy();
             inicializarTiraDias();
@@ -1135,7 +1140,6 @@ async function cargarDatosUsuario() {
         misHabitos = mapearHabitos(habitosDB, registrosDB);
         guardarRespaldoLocal();
 
-        await cargarTodasLasNotas();
         renderizarHabitos();
         actualizarResumenHoy();
         inicializarTiraDias();
@@ -1148,6 +1152,7 @@ async function cargarDatosUsuario() {
         cargarHistorialCompleto();
     } catch (e) {
         mostrarError('Revisa tu conexión.');
+        ocultarSplash();
     }
 }
 
@@ -1155,6 +1160,10 @@ function guardarRespaldoLocal() {
     try {
         localStorage.setItem('habify_respaldo_habitos', JSON.stringify(misHabitos));
         localStorage.setItem('habify_respaldo_fecha', new Date().toISOString());
+        if (usuarioActual) {
+            const { password, ...usuarioSinPass } = usuarioActual;
+            localStorage.setItem('habify_respaldo_usuario', JSON.stringify(usuarioSinPass));
+        }
     } catch (e) {
         // Si falla (ej. cuota llena), no es crítico: solo se pierde el respaldo offline
     }
@@ -1890,8 +1899,6 @@ function generarCalendarioMensual() {
 
         // Verificamos si ese día tiene al menos un hábito completado (datos REALES)
         const tieneRegistros = misHabitos.some(h => h.registros && Array.isArray(h.registros) && h.registros.includes(fechaDia));
-        const tieneNota = obtenerNotas()[fechaDia] !== undefined;
-
         let clasesEstilo = "";
 
         const esDark = document.documentElement.classList.contains('dark');
@@ -1907,17 +1914,8 @@ function generarCalendarioMensual() {
         }
 
         let indicador = '';
-        if (!esFuturo && !esHoy) {
-            if (tieneRegistros && tieneNota) {
-                indicador = `
-                    <span class="absolute bottom-0.5 left-1/3 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>
-                    <span class="absolute bottom-0.5 right-1/3 translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full"></span>
-                `;
-            } else if (tieneRegistros) {
-                indicador = `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>`;
-            } else if (tieneNota) {
-                indicador = `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full"></span>`;
-            }
+        if (!esFuturo && !esHoy && tieneRegistros) {
+            indicador = `<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full"></span>`;
         }
 
         const esSeleccionadoCal = !esHoy && fechaSeleccionadaCal === fechaDia;
@@ -1953,33 +1951,19 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     const panelVistaRapida = document.getElementById('vista-rapida-dia');
     const tituloResumen = document.getElementById('resumen-dia-titulo');
     const contenedorLista = document.getElementById('lista-habitos-cumplidos');
-    const textarea = document.getElementById('nota-dia');
-    const msg = document.getElementById('nota-guardada-msg');
 
     panelVistaRapida.classList.remove('hidden');
     contenedorLista.innerHTML = '';
-    msg.classList.add('hidden');
 
     if (esFuturo) {
         tituloResumen.innerText = "Día futuro";
         contenedorLista.innerHTML = `<span class="text-xs text-slate-400 font-medium">Este día aún no ha ocurrido.</span>`;
-        textarea.value = '';
-        textarea.disabled = true;
-        textarea.placeholder = 'No puedes escribir en días futuros';
         return;
     }
-
-    // Habilitamos el textarea para días pasados y hoy
-    textarea.disabled = false;
-    textarea.placeholder = '¿Cómo fue tu día? Escribe algo...';
-
-    // Guardamos la fecha en el textarea para usarla al guardar
-    textarea.dataset.fecha = fechaStr;
 
     const numeroDia = parseInt(fechaStr.split('-')[2]);
     tituloResumen.innerText = `Logros del día ${numeroDia}`;
 
-    // Hábitos completados ese día
     const habitosDelDia = misHabitos.filter(h => {
         const existia = h.fechaCreacion <= fechaStr;
         const loHizo = h.registros && h.registros.includes(fechaStr);
@@ -1997,10 +1981,6 @@ function verVistaRapidaDia(fechaStr, esFuturo) {
     } else {
         contenedorLista.innerHTML = `<span class="text-xs text-slate-400 font-medium">Ningún hábito completado este día.</span>`;
     }
-
-    // Cargar nota guardada de ese día
-    textarea.value = '';
-    cargarNotaDia(fechaStr).catch(console.error);
 }
 
 const MENSAJES_DIA_COMPLETO = [
@@ -2482,79 +2462,6 @@ if (catActiva && !document.getElementById('pantalla-crear-habito').classList.con
 }
 
 // ============================================================
-// REGISTRO DIARIO - NOTAS POR FECHA
-// ============================================================
-
-async function cargarTodasLasNotas() {
-    if (!usuarioActual) return;
-    try {
-        const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioActual.id}&nota=not.is.null&select=fecha,nota`,
-            { headers }
-        );
-        const data = await res.json();
-        notasCacheadas = {};
-        data.forEach(r => {
-            if (r.nota && r.nota.trim()) notasCacheadas[r.fecha] = r.nota;
-        });
-    } catch (e) {
-        notasCacheadas = {};
-    }
-}
-
-function obtenerNotas() {
-    return notasCacheadas;
-}
-
-async function cargarNotaDia(fechaStr) {
-    const textarea = document.getElementById('nota-dia');
-    if (!textarea || !usuarioActual) return;
-    
-    const nota = await obtenerNotaDiaSupabase(usuarioActual.id, fechaStr);
-    textarea.value = nota;
-}
-
-async function guardarNotaDia() {
-    const textarea = document.getElementById('nota-dia');
-    const msg = document.getElementById('nota-guardada-msg');
-    if (!textarea || !usuarioActual) return;
-
-    const fechaActual = textarea.dataset.fecha;
-    if (!fechaActual) return;
-
-    const texto = textarea.value.trim();
-
-    // Buscamos si hay registros ese día para vincular la nota
-    const registrosDelDia = await fetch(
-        `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioActual.id}&fecha=eq.${fechaActual}&select=id,habito_id`,
-        { headers }
-    ).then(r => r.json());
-
-    if (registrosDelDia.length > 0) {
-        // Actualizamos la nota en el primer registro del día
-        await fetch(
-            `${SUPABASE_URL}/rest/v1/registros?id=eq.${registrosDelDia[0].id}`,
-            {
-                method: 'PATCH',
-                headers,
-                body: JSON.stringify({ nota: texto })
-            }
-        );
-    }
-    // Si no hay registros ese día, no se crea registro fantasma — la nota simplemente no se guarda
-
-    // Actualizar caché local
-    if (texto) {
-        notasCacheadas[fechaActual] = texto;
-    } else {
-        delete notasCacheadas[fechaActual];
-    }
-    msg.classList.remove('hidden');
-    setTimeout(() => msg.classList.add('hidden'), 2000);
-    generarCalendarioMensual();
-}
-
-// ============================================================
 // TIRA DE DÍAS HORIZONTAL
 // ============================================================
 
@@ -2939,20 +2846,21 @@ function activarDragAndDrop() {
             renderizarHabitos();
         });
 
-        // Touch para móvil — long press para activar drag
+        // Touch para móvil — long press + drag a posición exacta
         let touchStartY = 0;
         let touchStartX = 0;
         let touchStartId = null;
         let longPressTimer = null;
         let dragActivo = false;
+        let dragOverCard = null;
 
         tarjeta.addEventListener('touchstart', e => {
             touchStartY = e.touches[0].clientY;
             touchStartX = e.touches[0].clientX;
             touchStartId = tarjeta.dataset.id;
             dragActivo = false;
+            dragOverCard = null;
 
-            // Activar drag solo después de 400ms presionando
             longPressTimer = setTimeout(() => {
                 dragActivo = true;
                 tarjeta.style.opacity = '0.7';
@@ -2965,36 +2873,58 @@ function activarDragAndDrop() {
             const moveX = Math.abs(e.touches[0].clientX - touchStartX);
             const moveY = Math.abs(e.touches[0].clientY - touchStartY);
 
-            // Si se mueve antes del long press, cancelar
-            if (!dragActivo && (moveX > 8 || moveY > 8)) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
+            if (!dragActivo) {
+                if (moveX > 8 || moveY > 8) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+                return;
             }
-        }, { passive: true });
 
-        tarjeta.addEventListener('touchend', e => {
+            e.preventDefault(); // evita scroll mientras se arrastra
+
+            // Detectar qué tarjeta hay debajo del dedo
+            tarjeta.style.visibility = 'hidden';
+            const elAbajo = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            tarjeta.style.visibility = '';
+
+            const targetCard = elAbajo?.closest('.habito-card');
+            document.querySelectorAll('.habito-card').forEach(t => t.classList.remove('drag-over'));
+            if (targetCard && targetCard !== tarjeta) {
+                targetCard.classList.add('drag-over');
+                dragOverCard = targetCard;
+            } else {
+                dragOverCard = null;
+            }
+        }, { passive: false });
+
+        tarjeta.addEventListener('touchend', () => {
             clearTimeout(longPressTimer);
             longPressTimer = null;
 
             tarjeta.style.opacity = '1';
             tarjeta.style.transform = '';
             tarjeta.style.transition = '';
+            document.querySelectorAll('.habito-card').forEach(t => t.classList.remove('drag-over'));
 
-            if (!dragActivo) return; // no era drag, fue tap normal
+            if (!dragActivo) return;
             dragActivo = false;
 
-            const touchEndY = e.changedTouches[0].clientY;
-            const diff = touchEndY - touchStartY;
+            if (!dragOverCard) return;
 
-            if (Math.abs(diff) < 20) return;
+            const idOrigen = touchStartId;
+            const idDestino = dragOverCard.dataset.id;
+            dragOverCard = null;
 
-            const indexOrigen = misHabitos.findIndex(h => h.id === touchStartId);
-            const nuevoPosicion = diff > 0 ? indexOrigen + 1 : indexOrigen - 1;
+            if (idOrigen === idDestino) return;
 
-            if (nuevoPosicion < 0 || nuevoPosicion >= misHabitos.length) return;
+            const indexOrigen = misHabitos.findIndex(h => h.id === idOrigen);
+            const indexDestino = misHabitos.findIndex(h => h.id === idDestino);
+
+            if (indexOrigen === -1 || indexDestino === -1) return;
 
             const [habitoMovido] = misHabitos.splice(indexOrigen, 1);
-            misHabitos.splice(nuevoPosicion, 0, habitoMovido);
+            misHabitos.splice(indexDestino, 0, habitoMovido);
 
             misHabitos.forEach((h, i) => {
                 h.orden = i;

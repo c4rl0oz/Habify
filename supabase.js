@@ -11,6 +11,14 @@ const headers = {
     'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+async function hashPassword(password) {
+    const data = new TextEncoder().encode(password);
+    const buffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 // ============================================================
 // USUARIOS
 // ============================================================
@@ -26,11 +34,11 @@ async function registrarUsuarioSupabase(nombre, correo, password) {
         return { error: 'Este correo ya está registrado.' };
     }
 
-    // Crear usuario
+    const hash = await hashPassword(password);
     const res = await fetch(`${SUPABASE_URL}/rest/v1/usuarios`, {
         method: 'POST',
         headers: { ...headers, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ nombre, correo, password })
+        body: JSON.stringify({ nombre, correo, password: hash })
     });
 
     const data = await res.json();
@@ -39,13 +47,26 @@ async function registrarUsuarioSupabase(nombre, correo, password) {
 }
 
 async function loginUsuarioSupabase(correo, password) {
+    // Busca solo por correo para no exponer la contraseña en la URL
     const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/usuarios?correo=eq.${encodeURIComponent(correo)}&password=eq.${encodeURIComponent(password)}&select=*`,
+        `${SUPABASE_URL}/rest/v1/usuarios?correo=eq.${encodeURIComponent(correo)}&select=*`,
         { headers }
     );
     const data = await res.json();
     if (data.length === 0) return { error: 'Correo o contraseña incorrectos.' };
-    return { usuario: data[0] };
+
+    const usuario = data[0];
+    const hash = await hashPassword(password);
+
+    if (usuario.password === hash) {
+        return { usuario };
+    }
+    // Migración: cuenta existente con contraseña en texto plano
+    if (usuario.password === password) {
+        await actualizarUsuario(usuario.id, { password: hash });
+        return { usuario };
+    }
+    return { error: 'Correo o contraseña incorrectos.' };
 }
 
 // ============================================================
@@ -281,34 +302,3 @@ async function obtenerCantidadDiaSupabase(habitoId, fecha) {
 
 
 
-async function guardarNotaSupabase(habitoId, usuarioId, fecha, nota) {
-    // Intentamos actualizar primero
-    const resUpdate = await fetch(
-        `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fecha}`,
-        {
-            method: 'PATCH',
-            headers: { ...headers, 'Prefer': 'return=representation' },
-            body: JSON.stringify({ nota })
-        }
-    );
-    const updated = await resUpdate.json();
-
-    // Si no existía el registro, lo creamos
-    if (updated.length === 0) {
-        await fetch(`${SUPABASE_URL}/rest/v1/registros`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ habito_id: habitoId, usuario_id: usuarioId, fecha, nota })
-        });
-    }
-}
-
-async function obtenerNotaDiaSupabase(usuarioId, fecha) {
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/registros?usuario_id=eq.${usuarioId}&fecha=eq.${fecha}&select=nota,habito_id`,
-        { headers }
-    );
-    const data = await res.json();
-    if (data.length === 0) return '';
-    return data[0].nota || '';
-}

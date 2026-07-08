@@ -1,5 +1,5 @@
 // Sube este número cada vez que cambien los assets estáticos (para forzar refresco de caché)
-const CACHE_VERSION = 'habify-v1';
+const CACHE_VERSION = 'habify-v4';
 
 // App shell: lo mínimo para que la app abra sin conexión
 const APP_SHELL = [
