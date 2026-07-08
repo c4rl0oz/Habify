@@ -886,24 +886,70 @@ function renderizarRecordatoriosDetalle(habito) {
 function calcularRachaMaxima(habito) {
     if (!habito.registros || habito.registros.length === 0) return 0;
 
-    const registrosOrdenados = [...habito.registros].sort();
-    let rachaMax = 1;
-    let rachaActual = 1;
+    const tipo = tipoRacha(habito);
 
-    for (let i = 1; i < registrosOrdenados.length; i++) {
-        const fechaAnterior = new Date(registrosOrdenados[i - 1] + "T00:00:00");
-        const fechaActual = new Date(registrosOrdenados[i] + "T00:00:00");
-        const diff = (fechaActual - fechaAnterior) / 86400000;
+    if (tipo === 'diario') {
+        const registrosOrdenados = [...habito.registros].sort();
+        let rachaMax = 1;
+        let rachaActual = 1;
 
-        if (diff === 1) {
-            rachaActual++;
-            rachaMax = Math.max(rachaMax, rachaActual);
-        } else if (diff > 1) {
-            rachaActual = 1;
+        for (let i = 1; i < registrosOrdenados.length; i++) {
+            const fechaAnterior = new Date(registrosOrdenados[i - 1] + "T00:00:00");
+            const fechaActual = new Date(registrosOrdenados[i] + "T00:00:00");
+            const diff = (fechaActual - fechaAnterior) / 86400000;
+
+            if (diff === 1) {
+                rachaActual++;
+                rachaMax = Math.max(rachaMax, rachaActual);
+            } else if (diff > 1) {
+                rachaActual = 1;
+            }
         }
+
+        return rachaMax;
     }
 
-    return rachaMax;
+    // 'semanal' / 'dias_fijos' — mejor racha histórica de semanas consecutivas cumplidas,
+    // recorriendo hacia adelante desde el primer registro hasta hoy (a diferencia de
+    // analizarRacha, que solo mira la racha actual hacia atrás desde hoy).
+    const setReg = new Set(habito.registros);
+    const primera = new Date([...habito.registros].sort()[0] + 'T00:00:00');
+    const ultimaSemana = lunesDeLaSemana(new Date());
+    let cursor = lunesDeLaSemana(primera);
+    let rachaDiasActual = 0, rachaDiasMax = 0;
+
+    while (cursor <= ultimaSemana) {
+        let hechosSemana = 0, cumplida = false;
+
+        if (tipo === 'semanal') {
+            const meta = habito.metaSemanal;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(cursor); d.setDate(cursor.getDate() + i);
+                if (setReg.has(fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate()))) hechosSemana++;
+            }
+            cumplida = hechosSemana >= meta;
+        } else {
+            const prog = habito.diasSemana;
+            let totalProg = 0;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(cursor); d.setDate(cursor.getDate() + i);
+                if (!prog.includes(d.getDay())) continue;
+                totalProg++;
+                if (setReg.has(fechaComoTexto(d.getFullYear(), d.getMonth(), d.getDate()))) hechosSemana++;
+            }
+            cumplida = totalProg > 0 && hechosSemana === totalProg;
+        }
+
+        if (cumplida) {
+            rachaDiasActual += hechosSemana;
+            rachaDiasMax = Math.max(rachaDiasMax, rachaDiasActual);
+        } else {
+            rachaDiasActual = 0;
+        }
+        cursor.setDate(cursor.getDate() + 7);
+    }
+
+    return rachaDiasMax;
 }
 
 // ============================================================
@@ -1055,14 +1101,21 @@ async function verificarSesion() {
         await cargarDatosUsuario();
         document.getElementById('pantalla-auth').classList.add('hidden');
     } catch (e) {
-        const respaldo = cargarRespaldoLocal();
-        if (respaldo && respaldo.length > 0) {
-            try {
-                const raw = localStorage.getItem('habify_respaldo_usuario');
-                if (raw) usuarioActual = JSON.parse(raw);
-            } catch (_) {}
+        const respaldo = cargarRespaldoLocal(usuarioId);
+        let respaldoUsuarioValido = false;
+        let usuarioCacheado = null;
+        try {
+            const raw = localStorage.getItem(`habify_respaldo_usuario_${usuarioId}`);
+            if (raw) {
+                usuarioCacheado = JSON.parse(raw);
+                respaldoUsuarioValido = usuarioCacheado && String(usuarioCacheado.id) === String(usuarioId);
+            }
+        } catch (_) {}
+
+        if (respaldo && respaldo.length > 0 && respaldoUsuarioValido) {
+            usuarioActual = usuarioCacheado;
             misHabitos = respaldo;
-            if (usuarioActual) actualizarUIUsuario(usuarioActual);
+            actualizarUIUsuario(usuarioActual);
             renderizarHabitos();
             actualizarResumenHoy();
             inicializarTiraDias();
@@ -1158,20 +1211,19 @@ async function cargarDatosUsuario() {
 
 function guardarRespaldoLocal() {
     try {
-        localStorage.setItem('habify_respaldo_habitos', JSON.stringify(misHabitos));
-        localStorage.setItem('habify_respaldo_fecha', new Date().toISOString());
-        if (usuarioActual) {
-            const { password, ...usuarioSinPass } = usuarioActual;
-            localStorage.setItem('habify_respaldo_usuario', JSON.stringify(usuarioSinPass));
-        }
+        if (!usuarioActual) return;
+        localStorage.setItem(`habify_respaldo_habitos_${usuarioActual.id}`, JSON.stringify(misHabitos));
+        localStorage.setItem(`habify_respaldo_fecha_${usuarioActual.id}`, new Date().toISOString());
+        const { password, ...usuarioSinPass } = usuarioActual;
+        localStorage.setItem(`habify_respaldo_usuario_${usuarioActual.id}`, JSON.stringify(usuarioSinPass));
     } catch (e) {
         // Si falla (ej. cuota llena), no es crítico: solo se pierde el respaldo offline
     }
 }
 
-function cargarRespaldoLocal() {
+function cargarRespaldoLocal(usuarioId) {
     try {
-        const raw = localStorage.getItem('habify_respaldo_habitos');
+        const raw = localStorage.getItem(`habify_respaldo_habitos_${usuarioId}`);
         return raw ? JSON.parse(raw) : null;
     } catch (e) {
         return null;
@@ -1453,11 +1505,8 @@ function aplicarFiltrosDia(fechaReferencia) {
             const bHecho = b.registros.includes(fechaReferencia) ? 1 : 0;
             if (aHecho !== bHecho) return aHecho - bHecho;
 
-            // Respeta el orden manual del drag&drop; si empata, cae a fecha de creación
-            const ordenDiff = (a.orden ?? 0) - (b.orden ?? 0);
-            if (ordenDiff !== 0) return ordenDiff;
-
-            return new Date(b.fechaCreacion) - new Date(a.fechaCreacion);
+            // Orden de creación (más antiguo primero)
+            return new Date(a.fechaCreacion) - new Date(b.fechaCreacion);
         });
 }
 
@@ -1475,7 +1524,7 @@ function generarTarjetaHabito(habito, fechaReferencia) {
     const borderColor = yaHecho ? color + '50' : (esDark ? 'rgba(255,255,255,0.10)' : '#e2e8f0');
 
     return `
-    <div class="habito-card rounded-[20px] overflow-hidden border transition-colors duration-300 cursor-grab active:cursor-grabbing"
+    <div class="habito-card rounded-[20px] overflow-hidden border transition-colors duration-300"
         data-id="${habito.id}"
         style="background:${colorFondo}; border-color:${borderColor}; position:relative; box-shadow:${yaHecho ? `0 6px 24px ${color}40, 0 2px 8px ${color}20` : '0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)'};"
          onclick="abrirDetalleHabito('${habito.id}')">
@@ -1530,9 +1579,6 @@ function renderizarLista(habitosOrdenados, fechaReferencia) {
     contenedor.innerHTML = habitosOrdenados
         .map(habito => generarTarjetaHabito(habito, fechaReferencia))
         .join('');
-
-    // Activar drag & drop
-    activarDragAndDrop();
 
     // Animación de entrada en cascada solo en carga inicial
     if (animarCargaInicial) {
@@ -1656,16 +1702,26 @@ async function ajustarContador(habitoId, fechaStr, delta) {
     if (!habito.cantidades) habito.cantidades = {};
     const cantidadActual = habito.cantidades[fechaStr] || 0;
     const nuevaCantidad = Math.max(0, cantidadActual + delta);
-    habito.cantidades[fechaStr] = nuevaCantidad;
 
     const metaCantidad = habito.metaCantidad;
     if (!metaCantidad || metaCantidad < 1) {
         mostrarError('Este hábito no tiene meta definida.');
         return;
-    }    
+    }
     const yaCompletado = habito.registros.includes(fechaStr);
+    const shouldComplete = nuevaCantidad >= metaCantidad;
+    const cruzandoHaciaAbajo = !shouldComplete && yaCompletado;
 
-    if (nuevaCantidad >= metaCantidad && !yaCompletado) {
+    // Si vamos a desmarcar y hay una foto guardada, confirmar ANTES de mutar nada
+    const tieneFoto = !!habito.fotos?.[fechaStr];
+    if (cruzandoHaciaAbajo && tieneFoto) {
+        const ok = confirm('Al desmarcar este hábito se eliminará la foto guardada para este día. ¿Continuar?');
+        if (!ok) return;
+    }
+
+    habito.cantidades[fechaStr] = nuevaCantidad;
+
+    if (shouldComplete && !yaCompletado) {
         // Llegó a la meta — marcar como completado
         await marcarHabitoSupabase(habitoId, usuarioActual.id, fechaStr);
         habito.registros.push(fechaStr);
@@ -1677,8 +1733,13 @@ async function ajustarContador(habitoId, fechaStr, delta) {
         sonarMetaContador();
         verificarNuevosLogros();
 
-    } else if (nuevaCantidad < metaCantidad && yaCompletado) {
-        // Bajó de la meta — desmarcar y guardar cantidad parcial
+    } else if (cruzandoHaciaAbajo) {
+        // Bajó de la meta — limpiar foto si había, desmarcar y guardar cantidad parcial
+        if (tieneFoto) {
+            const regId = habito._registroIdMap?.[fechaStr];
+            if (regId) await eliminarFotoDeRegistro(regId);
+            delete habito.fotos[fechaStr];
+        }
         await desmarcarHabitoSupabase(habitoId, fechaStr);
         habito.registros = habito.registros.filter(f => f !== fechaStr);
         // Guardar cantidad parcial en nuevo registro
@@ -1695,21 +1756,17 @@ async function ajustarContador(habitoId, fechaStr, delta) {
             });
         }
 
-    } else if (!yaCompletado && nuevaCantidad > 0) {
-        // Progreso parcial sin completar — guardar o actualizar
-        await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
-
-    } else if (nuevaCantidad === 0 && yaCompletado) {
-        // Bajó a 0 estando completado — desmarcar y borrar
-        await desmarcarHabitoSupabase(habitoId, fechaStr);
-        habito.registros = habito.registros.filter(f => f !== fechaStr);
-
-    } else if (nuevaCantidad === 0 && !yaCompletado) {
-        // Bajó a 0 sin estar completado — borrar registro parcial si existe
-        await fetch(
-            `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
-            { method: 'DELETE', headers }
-        );
+    } else {
+        // Sin cambio de estado de completado (incluye seguir sumando por encima de la meta
+        // ya estando completado) — siempre persistir la cantidad actual
+        if (nuevaCantidad > 0) {
+            await guardarCantidadSupabase(habitoId, usuarioActual.id, fechaStr, nuevaCantidad);
+        } else {
+            await fetch(
+                `${SUPABASE_URL}/rest/v1/registros?habito_id=eq.${habitoId}&fecha=eq.${fechaStr}`,
+                { method: 'DELETE', headers }
+            );
+        }
     }
 
     // Actualizar UI
@@ -2784,159 +2841,6 @@ function programarRecordatorios() {
     }
 }
 
-// ============================================================
-// DRAG & DROP
-// ============================================================
-let dragSrcId = null;
-
-function activarDragAndDrop() {
-    const tarjetas = document.querySelectorAll('.habito-card');
-    tarjetas.forEach(tarjeta => {
-        tarjeta.setAttribute('draggable', 'true');
-
-        tarjeta.addEventListener('dragstart', e => {
-            dragSrcId = tarjeta.dataset.id;
-            tarjeta.style.opacity = '0.4';
-            tarjeta.style.transform = 'scale(0.97)';
-            e.dataTransfer.effectAllowed = 'move';
-        });
-
-        tarjeta.addEventListener('dragend', () => {
-            tarjeta.style.opacity = '1';
-            tarjeta.style.transform = '';
-            document.querySelectorAll('.habito-card').forEach(t => {
-                t.classList.remove('drag-over');
-                t.style.borderColor = '';
-            });
-        });
-
-        tarjeta.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (tarjeta.dataset.id !== dragSrcId) {
-                tarjeta.classList.add('drag-over');
-            }
-        });
-
-        tarjeta.addEventListener('dragleave', () => {
-            tarjeta.classList.remove('drag-over');
-        });
-
-        tarjeta.addEventListener('drop', e => {
-            e.preventDefault();
-            if (tarjeta.dataset.id === dragSrcId) return;
-
-            const idOrigen = dragSrcId;
-            const idDestino = tarjeta.dataset.id;
-
-            const indexOrigen = misHabitos.findIndex(h => h.id === idOrigen);
-            const indexDestino = misHabitos.findIndex(h => h.id === idDestino);
-
-            // Reordenar en memoria
-            const [habitoMovido] = misHabitos.splice(indexOrigen, 1);
-            misHabitos.splice(indexDestino, 0, habitoMovido);
-
-            // Actualizar orden en Supabase
-            misHabitos.forEach((h, i) => {
-                h.orden = i;
-                actualizarOrdenSupabase(h.id, i);
-            });
-
-            animarCargaInicial = false;
-            renderizarHabitos();
-        });
-
-        // Touch para móvil — long press + drag a posición exacta
-        let touchStartY = 0;
-        let touchStartX = 0;
-        let touchStartId = null;
-        let longPressTimer = null;
-        let dragActivo = false;
-        let dragOverCard = null;
-
-        tarjeta.addEventListener('touchstart', e => {
-            touchStartY = e.touches[0].clientY;
-            touchStartX = e.touches[0].clientX;
-            touchStartId = tarjeta.dataset.id;
-            dragActivo = false;
-            dragOverCard = null;
-
-            longPressTimer = setTimeout(() => {
-                dragActivo = true;
-                tarjeta.style.opacity = '0.7';
-                tarjeta.style.transform = 'scale(0.97)';
-                tarjeta.style.transition = 'transform 0.2s, opacity 0.2s';
-            }, 400);
-        }, { passive: true });
-
-        tarjeta.addEventListener('touchmove', e => {
-            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
-            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
-
-            if (!dragActivo) {
-                if (moveX > 8 || moveY > 8) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
-                return;
-            }
-
-            e.preventDefault(); // evita scroll mientras se arrastra
-
-            // Detectar qué tarjeta hay debajo del dedo
-            tarjeta.style.visibility = 'hidden';
-            const elAbajo = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-            tarjeta.style.visibility = '';
-
-            const targetCard = elAbajo?.closest('.habito-card');
-            document.querySelectorAll('.habito-card').forEach(t => t.classList.remove('drag-over'));
-            if (targetCard && targetCard !== tarjeta) {
-                targetCard.classList.add('drag-over');
-                dragOverCard = targetCard;
-            } else {
-                dragOverCard = null;
-            }
-        }, { passive: false });
-
-        tarjeta.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-
-            tarjeta.style.opacity = '1';
-            tarjeta.style.transform = '';
-            tarjeta.style.transition = '';
-            document.querySelectorAll('.habito-card').forEach(t => t.classList.remove('drag-over'));
-
-            if (!dragActivo) return;
-            dragActivo = false;
-
-            if (!dragOverCard) return;
-
-            const idOrigen = touchStartId;
-            const idDestino = dragOverCard.dataset.id;
-            dragOverCard = null;
-
-            if (idOrigen === idDestino) return;
-
-            const indexOrigen = misHabitos.findIndex(h => h.id === idOrigen);
-            const indexDestino = misHabitos.findIndex(h => h.id === idDestino);
-
-            if (indexOrigen === -1 || indexDestino === -1) return;
-
-            const [habitoMovido] = misHabitos.splice(indexOrigen, 1);
-            misHabitos.splice(indexDestino, 0, habitoMovido);
-
-            misHabitos.forEach((h, i) => {
-                h.orden = i;
-                actualizarOrdenSupabase(h.id, i);
-            });
-
-            animarCargaInicial = false;
-            renderizarHabitos();
-        }, { passive: true });
-    });
-}
-
 function seleccionarTipoHabito(tipo) {
     document.getElementById('habito-tipo').value = tipo;
     const btnCheck = document.getElementById('tipo-check-btn');
@@ -3351,13 +3255,24 @@ function abrirEditarHabito() {
         btn.style.background = habito.color;
         circulo.style.transform = 'translateX(24px)';
         document.getElementById('recordatorio-hora-container').classList.remove('hidden');
-        document.getElementById('recordatorio-hora').value = habito.recordatorio;
-        // Actualizar displays visuales con la hora guardada
-        const partes = habito.recordatorio.split(':');
-        horaRecordatorio = parseInt(partes[0]);
-        minutoRecordatorio = parseInt(partes[1]);
-        document.getElementById('recordatorio-hora-display').innerText = partes[0];
-        document.getElementById('recordatorio-minuto-display').innerText = partes[1];
+
+        if (habito.tipo === 'contador') {
+            // Recordatorio de contador se guarda como JSON de varias horas — no es "HH:MM"
+            try {
+                const parsed = JSON.parse(habito.recordatorio);
+                horasRecordatorioMultiple = Array.isArray(parsed) && parsed.length > 0 ? parsed : ['08:00'];
+            } catch {
+                horasRecordatorioMultiple = ['08:00'];
+            }
+        } else {
+            document.getElementById('recordatorio-hora').value = habito.recordatorio;
+            // Actualizar displays visuales con la hora guardada
+            const partes = habito.recordatorio.split(':');
+            horaRecordatorio = parseInt(partes[0]);
+            minutoRecordatorio = parseInt(partes[1]);
+            document.getElementById('recordatorio-hora-display').innerText = partes[0];
+            document.getElementById('recordatorio-minuto-display').innerText = partes[1];
+        }
     } else {
         recordatorioActivo = false;
         document.getElementById('toggle-recordatorio').style.background = '';
@@ -3365,6 +3280,7 @@ function abrirEditarHabito() {
         document.getElementById('recordatorio-hora-container').classList.add('hidden');
         horaRecordatorio = 8;
         minutoRecordatorio = 0;
+        horasRecordatorioMultiple = ['08:00'];
         document.getElementById('recordatorio-hora').value = '08:00';
         document.getElementById('recordatorio-hora-display').innerText = '08';
         document.getElementById('recordatorio-minuto-display').innerText = '00';
@@ -3411,7 +3327,7 @@ async function guardarEdicionHabito() {
     const color = document.getElementById('habito-color').value;
     const meta = parseInt(document.getElementById('habito-meta').value);
     const tipo = document.getElementById('habito-tipo').value;
-    const unidad = document.getElementById('habito-unidad')?.value.trim() || null;
+    const unidad = tipo === 'contador' ? (document.getElementById('habito-unidad')?.value.trim() || null) : null;
     const metaCantidad = tipo === 'contador' ? parseInt(document.getElementById('habito-meta-cantidad')?.value) || null : null;
 
     if (!nombre) {
@@ -3740,21 +3656,21 @@ const LOGROS = [
         emoji: '🔥',
         nombre: 'En racha',
         descripcion: '7 días consecutivos en cualquier hábito',
-        check: () => misHabitos.some(h => calcularRacha(h) >= 7)
+        check: () => misHabitos.filter(h => tipoRacha(h) === 'diario').some(h => calcularRacha(h) >= 7)
     },
     {
         id: 'imparable',
         emoji: '🔥',
         nombre: 'Imparable',
         descripcion: '30 días consecutivos en cualquier hábito',
-        check: () => misHabitos.some(h => calcularRacha(h) >= 30)
+        check: () => misHabitos.filter(h => tipoRacha(h) === 'diario').some(h => calcularRacha(h) >= 30)
     },
     {
         id: 'leyenda',
         emoji: '🔥',
         nombre: 'Leyenda',
         descripcion: '100 días consecutivos en cualquier hábito',
-        check: () => misHabitos.some(h => calcularRacha(h) >= 100)
+        check: () => misHabitos.filter(h => tipoRacha(h) === 'diario').some(h => calcularRacha(h) >= 100)
     },
     {
         id: 'semana_perfecta',
@@ -3921,13 +3837,15 @@ function obtenerLogrosDesbloqueados() {
 }
 
 function verificarNuevosLogros() {
-    const yaVistos = JSON.parse(localStorage.getItem('habify_logros_vistos') || '[]');
+    if (!usuarioActual) return;
+    const clave = `habify_logros_vistos_${usuarioActual.id}`;
+    const yaVistos = JSON.parse(localStorage.getItem(clave) || '[]');
     const desbloqueados = obtenerLogrosDesbloqueados();
 
     desbloqueados.forEach(logro => {
         if (!yaVistos.includes(logro.id)) {
             yaVistos.push(logro.id);
-            localStorage.setItem('habify_logros_vistos', JSON.stringify(yaVistos));
+            localStorage.setItem(clave, JSON.stringify(yaVistos));
             mostrarNotificacionLogro(logro);
         }
     });
@@ -3969,8 +3887,9 @@ function mostrarNotificacionLogro(logro) {
 // DÍA PERFECTO
 // ============================================================
 function verificarDiaPerfecto() {
+    if (!usuarioActual) return;
     const hoy = hoyComoTexto();
-    const yaVisto = localStorage.getItem('habify_dia_perfecto') === hoy;
+    const yaVisto = localStorage.getItem(`habify_dia_perfecto_${usuarioActual.id}`) === hoy;
     if (yaVisto) return;
 
     const habitosHoy = misHabitos.filter(h => aplicaEnDia(h, hoy));
@@ -4058,7 +3977,7 @@ function verificarDiaPerfecto() {
     pantalla.style.transition = 'opacity 0.4s ease';
     setTimeout(() => { pantalla.style.opacity = '1'; }, 10);
 
-    localStorage.setItem('habify_dia_perfecto', hoy);
+    localStorage.setItem(`habify_dia_perfecto_${usuarioActual.id}`, hoy);
 }
 
 function cerrarDiaPerfecto() {
@@ -4469,8 +4388,8 @@ const FAQ_ITEMS = [
     a: 'Sí. Al marcar un hábito como completado, puedes tomar una foto o elegir una de tu galería como recuerdo. Todas tus fotos se guardan y puedes verlas en "Mis fotos" dentro de tu perfil.'
   },
   {
-    q: '¿Cómo cambio el orden de mis hábitos?',
-    a: 'Mantén presionado cualquier tarjeta de hábito y arrástrala a la posición que quieras. El nuevo orden se guarda automáticamente.'
+    q: '¿Puedo cambiar el orden de mis hábitos?',
+    a: 'El orden es automático: primero los hábitos fijados (pin), luego los pendientes del día antes que los ya completados, y entre ellos se ordenan por fecha de creación. Para traer un hábito arriba, fíjalo desde su pantalla de detalle.'
   },
   {
     q: '¿Qué es un "día perfecto"?',
@@ -4538,7 +4457,8 @@ let tutorialPaso = 0;
 const TUTORIAL_TOTAL = 5;
 
 function mostrarTutorialSiEsNecesario() {
-    if (localStorage.getItem('habify_tutorial_visto')) return;
+    if (!usuarioActual) return;
+    if (localStorage.getItem(`habify_tutorial_visto_${usuarioActual.id}`)) return;
     tutorialPaso = 0;
     actualizarTutorial();
     const pantalla = document.getElementById('pantalla-tutorial');
@@ -4584,7 +4504,7 @@ function tutorialSiguiente() {
 }
 
 function cerrarTutorial() {
-    localStorage.setItem('habify_tutorial_visto', '1');
+    if (usuarioActual) localStorage.setItem(`habify_tutorial_visto_${usuarioActual.id}`, '1');
     const pantalla = document.getElementById('pantalla-tutorial');
     pantalla.style.transition = 'opacity 0.35s ease';
     pantalla.style.opacity = '0';

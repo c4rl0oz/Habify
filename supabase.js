@@ -140,13 +140,6 @@ async function togglePinSupabase(habitoId, pinneado) {
         body: JSON.stringify({ pinneado })
     });
 }
-async function actualizarOrdenSupabase(habitoId, orden) {
-    await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ orden })
-    });
-}
 async function eliminarHabitoSupabase(habitoId) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/habitos?id=eq.${habitoId}`, {
         method: 'DELETE',

@@ -20,7 +20,7 @@
   - Todos los días.
   - **Meta semanal** (X veces por semana, cualquier día).
   - **Días concretos** de la semana (ej. lunes, viernes y sábado).
-- Reordenamiento por **arrastrar y soltar**, fijar hábitos (pin) y edición completa.
+- Fijar hábitos (**pin**) para llevarlos arriba de la lista, y edición completa.
 
 ### Seguimiento diario
 - Tira horizontal de días.
